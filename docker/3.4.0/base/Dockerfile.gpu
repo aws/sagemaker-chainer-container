@@ -1,0 +1,63 @@
+FROM nvidia/cuda:9.0-cudnn7-devel
+# this is MXNet base image, try to keep it
+
+# https://gitlab.com/nvidia/cuda/blob/ubuntu16.04/9.0/devel/Dockerfile
+# Why devel, not runtime? (NCCL 2)
+# https://gitlab.com/nvidia/cuda/commit/e0edb5359ecb7bd3d86f0c9bfa18c2260b741ebb
+# install python and nginx
+RUN apt-get update && \
+     apt-get -y install build-essential python-dev git wget curl nginx openssh-server
+
+# install pip
+RUN cd /tmp && \
+     curl -O https://bootstrap.pypa.io/get-pip.py && \
+     python2 get-pip.py && \
+     python3 get-pip.py
+
+# CUDA-aware OpenMPI:
+# 2.1.2 is recommended by Chainer people.
+RUN cd /tmp && \
+        wget "https://www.open-mpi.org/software/ompi/v2.1/downloads/openmpi-2.1.2.tar.gz" && \
+        tar xzf openmpi-2.1.2.tar.gz && \
+        cd openmpi-2.1.2  && \
+        ./configure --prefix=/usr/local/openmpi --with-cuda  && make all && make -j"$(nproc)" install && ldconfig
+
+ENV LD_LIBRARY_PATH=/usr/local/openmpi/lib:$LD_LIBRARY_PATH
+
+ENV PATH /usr/local/openmpi/bin/:$PATH
+
+# install telegraf, used for metrics and benchmark
+RUN cd /tmp && \
+    curl -O https://dl.influxdata.com/telegraf/releases/telegraf_1.4.2-1_amd64.deb && \
+    dpkg -i telegraf_1.4.2-1_amd64.deb && \
+    rm telegraf_1.4.2-1_amd64.deb
+
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+     PYTHONUNBUFFERED=1
+
+# SSH. Partially taken from https://docs.docker.com/engine/examples/running_ssh_service/
+RUN mkdir /var/run/sshd
+# SSH login fix. Otherwise user is kicked off after login
+RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
+
+# Create SSH key.
+# TODO: don't run as root.
+RUN mkdir -p /root/.ssh/
+RUN ssh-keygen -q -t rsa -N '' -f /root/.ssh/id_rsa
+RUN cp /root/.ssh/id_rsa.pub /root/.ssh/authorized_keys
+RUN printf "Host *\n  StrictHostKeyChecking no\n" >> /root/.ssh/config
+
+# MPI Configuration.
+RUN mkdir -p /root/.openmpi
+
+# If any training process fails, fail entire job. https://www.open-mpi.org/doc/v3.0/man1/mpirun.1.php#toc23
+# TODO: This doesn't actually work as expected. MPI job keeps running even if user module raises an exception.
+# RUN echo "orte_abort_on_non_zero_status=1\n" >> /root/.openmpi/mca-params.conf
+
+# Add /mpi_script.sh
+# For distributed training: the 'master node' runs mpirun with this script, '/mpi_script.sh'
+# This script creates a file '/mpi_is_running' that worker nodes use to determine whether training (started by MPI from
+# the master node) is still running. Processes on worker nodes use /mpi_is_running file to determine when to exit.
+COPY mpi_script.sh /mpi_script.sh
+RUN chmod +x /mpi_script.sh
