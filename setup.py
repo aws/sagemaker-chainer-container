@@ -11,10 +11,9 @@ def read(fname):
 
 
 setup(
-    name='sagemaker_chainer_container',
+    name='sagemaker-chainer-container',
     version='1.0',
     description='Open source library template for creating containers to run on Amazon SageMaker.',
-
     packages=find_packages(where='src', exclude=('test',)),
     package_dir={'': 'src'},
     py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
@@ -33,10 +32,10 @@ setup(
         'Programming Language :: Python :: 3.5',
     ],
 
-    install_requires=['numpy', 'sagemaker-container-support', 'boto3>=1.4.8', 'PyYAML', 'sagemaker', 'pytest', 'mock',
-                      'flask', 'requests', 'chainer'],
+    install_requires=['numpy', 'sagemaker-container-support', 'PyYAML', 'flask', 'requests', 'chainer', 'mpi4py',
+                      'chainermn'],
     extras_require={
-        'test': ['tox', 'flake8', 'pytest', 'pytest-cov', 'pytest-xdist', 'mock', 'Flask', 'boto3', 'docker-compose',
-                 'nvidia-docker-compose']
+        'test': ['tox', 'flake8', 'pytest', 'pytest-cov', 'pytest-xdist', 'mock', 'Flask', 'boto3>=1.4.8',
+                 'docker-compose', 'nvidia-docker-compose', 'sagemaker']
     }
 )

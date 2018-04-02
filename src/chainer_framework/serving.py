@@ -1,9 +1,6 @@
 import json
-import pickle
 import numpy as np
 from six import StringIO
-
-from chainer_framework import PICKLE_CONTENT_TYPE
 
 from container_support.app import ServingEngine
 from container_support.serving import JSON_CONTENT_TYPE, CSV_CONTENT_TYPE, \
@@ -33,9 +30,7 @@ def input_fn(serialized_input_data, content_type):
         data = json.loads(serialized_input_data)
         return np.array(data, dtype=np.float32)
 
-    if content_type == PICKLE_CONTENT_TYPE:
-        data = pickle.loads(serialized_input_data)
-        return np.array(data, dtype=np.float32)
+    # TODO: npz
 
     if content_type == CSV_CONTENT_TYPE:
         stream = StringIO(serialized_input_data)
@@ -75,8 +70,7 @@ def output_fn(prediction_output, accept):
     if accept == JSON_CONTENT_TYPE:
         return json.dumps(prediction_output), JSON_CONTENT_TYPE
 
-    if accept == PICKLE_CONTENT_TYPE:
-        return pickle.dumps(prediction_output), PICKLE_CONTENT_TYPE
+    # TODO: npz
 
     if accept == CSV_CONTENT_TYPE:
         stream = StringIO()
