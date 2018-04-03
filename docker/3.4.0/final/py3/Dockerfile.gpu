@@ -8,7 +8,8 @@ RUN pip3 install --no-cache \
      filelock==3.0.4 protobuf==3.5.1 Pillow==5.0.0 cupy==2.4.0 \
      chainer==3.4.0 chainermn==1.2.0 mpi4py==3.0.0 chainercv==0.8.0 matplotlib==2.2.0
 
-# Edit matplotlibrc to use "Agg" backend by default to write plots to file.
+# Edit matplotlibrc to use "Agg" backend by default to write plots to PNG files (which some Chainer extensions do).
+# https://matplotlib.org/tutorials/introductory/usage.html#what-is-a-backend
 RUN sed -i s/TkAgg/Agg/ /usr/local/lib/python3.5/dist-packages/matplotlib/mpl-data/matplotlibrc
 
 COPY sagemaker-container-support/dist/sagemaker_container_support-1.0-py2.py3-none-any.whl /sagemaker_container_support-1.0-py2.py3-none-any.whl

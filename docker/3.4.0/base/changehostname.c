@@ -11,11 +11,11 @@
  * screwing up rank initialization and who knows what else (OpenMPI calls gethostname() liberally).
  *
  * The framework training code calls change-hostname.sh, passing in the 'real' hostname ('algo-1', 'algo-2', etc) to
- * replace "localhost" before compiling this code into a shared library.
+ * replace "PLACEHOLDER_HOSTNAME" before compiling this code into a shared library.
  */
 int gethostname(char *name, size_t len)
 {
-  const char *val = "localhost";
+  const char *val = "PLACEHOLDER_HOSTNAME";
   strncpy(name, val, len);
   return 0;
 }
