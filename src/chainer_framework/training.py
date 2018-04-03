@@ -5,7 +5,7 @@ import socket
 import subprocess
 import time
 
-from chainer_framework import timeout
+from chainer_framework.timeout import timeout
 from chainer import serializers
 
 from container_support.app import TrainingEngine
@@ -73,12 +73,14 @@ def _run_training():
     logger.info('Invoking user training script.')
     model = user_module.train(**training_parameters)
 
-    if model and env.current_host == 'algo-1':
+    hosts = env.hosts
+    on_master_node = _get_master_host_name(hosts)
+    if model and on_master_node:
         if hasattr(user_module, 'save'):
             user_module.save(model, env.model_dir)
         else:
             serializers.save_npz(os.path.join(env.model_dir, 'model.npz'), model)
-    if not model and env.current_host == 'algo-1':
+    if not model and on_master_node:
         logger.warn("Model object is empty. No model was saved!")
 
 
