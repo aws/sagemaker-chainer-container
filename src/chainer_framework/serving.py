@@ -11,15 +11,20 @@ engine = ServingEngine()
 
 @engine.model_fn()
 def model_fn(model_dir):
-    """For chainer, a default function to load a model cannot be provided.
-    Users should provide customized model_fn() in script.
     """
-    raise NotImplementedError('No default model_fn provided. User should provide model_fn in script.')
+    Loads a model
+    Args:
+        model_dir:
+
+    Returns: A Chainer model.
+
+    """
+    raise NotImplementedError('Please provide a model_fn implementation. '
+                              'See documentation for model_fn at https://github.com/aws/sagemaker-python-sdk')
 
 @engine.input_fn()
 def input_fn(serialized_input_data, content_type):
-    """A default input fn to handle JSON, CSV and PICKLE formats. The required formats for a SageMaker Container are
-    JSON and CSV.
+    """A default input_fn that can handle JSON, CSV and NPZ formats.
 
     Args:
         serialized_input_data: the request payload serialized in the content_type format
@@ -30,7 +35,7 @@ def input_fn(serialized_input_data, content_type):
         data = json.loads(serialized_input_data)
         return np.array(data, dtype=np.float32)
 
-    # TODO: npz
+    # TODO (andremoeller): support a binary format (possibly npz) as well.
 
     if content_type == CSV_CONTENT_TYPE:
         stream = StringIO(serialized_input_data)
@@ -42,7 +47,7 @@ def input_fn(serialized_input_data, content_type):
 
 @engine.predict_fn()
 def predict_fn(input_data, model):
-    """A default prediction function for a Generic Framework.
+    """A default predict_fn for Chainer. Calls a model on data deserialized in input_fn.
 
     Args:
         input_data: input data for prediction deserialized by input_fn
@@ -56,7 +61,7 @@ def predict_fn(input_data, model):
 
 @engine.output_fn()
 def output_fn(prediction_output, accept):
-    """A default output_fn for a Generic Framework
+    """A default output_fn for Chainer. Serializes predictions from predict_fn.
 
     Args:
         prediction_output: a prediction result from predict_fn
@@ -70,7 +75,7 @@ def output_fn(prediction_output, accept):
     if accept == JSON_CONTENT_TYPE:
         return json.dumps(prediction_output), JSON_CONTENT_TYPE
 
-    # TODO: npz
+        # TODO (andremoeller): support a binary format (possibly npz) as well.
 
     if accept == CSV_CONTENT_TYPE:
         stream = StringIO()
@@ -86,11 +91,3 @@ def transform_fn(model, data, content_type, accept):
     prediction = predict_fn(input_data, model)
     output_data, accept = output_fn(prediction, accept)
     return output_data, accept
-
-
-@engine.load_dependencies()
-def load_dependencies():
-    """This function is only called once by the container support before it starts the Flask servers, it useful to load
-    framework specific dependencies
-    """
-    pass
