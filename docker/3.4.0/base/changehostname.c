@@ -1,37 +1,21 @@
-#define _GNU_SOURCE
-#include <unistd.h>
-#include <sys/syscall.h>
-#include <sys/types.h>
-#include <sys/utsname.h>
-
 #include <stdio.h>
 #include <string.h>
 
-static int (*real_gethostname)(char *name, size_t len);
-
-int uname(struct utsname *buf)
-{
- int ret;
-
- ret = syscall(SYS_uname, buf);
-
- strcpy(buf->nodename, "localhost");
-
- return ret;
-}
-
+/*
+ * Modifies gethostname to return algo-1, algo-2, etc. when running on SageMaker.
+ *
+ * ChainerMN calls MPI's Get_processor_name() when initializing ranks.
+ * OpenMPI's Get_processor_name() in turn calls gethostname().
+ * https://github.com/open-mpi/ompi/blob/master/ompi/mpi/c/get_processor_name.c#L69
+ * Without this, gethostname() on SageMaker returns 'aws', leading OpenMPI to think there is only one processor,
+ * screwing up rank initialization and who knows what else (OpenMPI calls gethostname() liberally).
+ *
+ * The framework training code calls change-hostname.sh, passing in the 'real' hostname ('algo-1', 'algo-2', etc) to
+ * replace "localhost" before compiling this code into a shared library.
+ */
 int gethostname(char *name, size_t len)
 {
-  const char *val;
-
-  /* Override hostname */
-  val = "localhost";
-  if (val != NULL)
-  {
-    strncpy(name, val, len);
-    return 0;
-  }
-
-  /* Call real gethostname() */
-  return real_gethostname(name, len);
+  const char *val = "localhost";
+  strncpy(name, val, len);
+  return 0;
 }

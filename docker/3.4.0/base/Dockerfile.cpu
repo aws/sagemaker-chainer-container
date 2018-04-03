@@ -8,7 +8,8 @@ RUN  apt-get update && \
 RUN cd /tmp && \
      curl -O https://bootstrap.pypa.io/get-pip.py && \
      python2 get-pip.py && \
-     python3 get-pip.py
+     python3 get-pip.py && \
+     rm get-pip.py
 
 # https://stackoverflow.com/questions/29274638/opencv-libdc1394-error-failed-to-initialize-libdc1394
 RUN ln -s /dev/null /dev/raw1394
@@ -17,9 +18,7 @@ RUN cd /tmp && \
         wget "https://www.open-mpi.org/software/ompi/v2.1/downloads/openmpi-2.1.2.tar.gz" && \
         tar xzf openmpi-2.1.2.tar.gz && \
         cd openmpi-2.1.2  && \
-        ./configure && make all && make install
-
-RUN ldconfig
+        ./configure && make all && make install && ldconfig && rm -rf /tmp/*
 
 ENV LD_LIBRARY_PATH=/usr/local/openmpi/lib:$LD_LIBRARY_PATH
 

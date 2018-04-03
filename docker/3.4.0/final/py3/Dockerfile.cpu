@@ -14,6 +14,7 @@ RUN sed -i s/TkAgg/Agg/ /usr/local/lib/python3.5/dist-packages/matplotlib/mpl-da
 COPY sagemaker-container-support/dist/sagemaker_container_support-1.0-py2.py3-none-any.whl /sagemaker_container_support-1.0-py2.py3-none-any.whl
 COPY dist/sagemaker_chainer_container-1.0-py2.py3-none-any.whl /sagemaker_chainer_container-1.0-py2.py3-none-any.whl
 
-RUN pip3 install /sagemaker_container_support-1.0-py2.py3-none-any.whl && pip3 install /sagemaker_chainer_container-1.0-py2.py3-none-any.whl
+RUN pip3 install --no-cache /sagemaker_container_support-1.0-py2.py3-none-any.whl && \
+    pip3 install --no-cache /sagemaker_chainer_container-1.0-py2.py3-none-any.whl
 
 ENTRYPOINT ["python", "-m", "chainer_framework.start"]
