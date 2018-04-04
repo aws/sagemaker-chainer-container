@@ -37,10 +37,10 @@ def train(user_module, training_environment):
     The following is a list of other hyperparameters that can be used to change training behavior. None of these
     hyperparameters are required:
 
-    1. `use_mpi`: force use of MPI so that ChainerMN scripts can be run on a single host.
-    2. `process_slots_per_host`: the number of process slots per host.
-    3. `num_processes`: the total number of processes to run.
-    4. `additional_mpi_options`: a string of options to pass to mpirun.
+    * `use_mpi`: force use of MPI so that ChainerMN scripts can be run on a single host.
+    * `process_slots_per_host`: the number of process slots per host.
+    * `num_processes`: the total number of processes to run.
+    * `additional_mpi_options`: a string of options to pass to mpirun.
 
     For more on how distributed
 
@@ -115,22 +115,22 @@ def _get_mpi_command(training_environment):
 
     This command passes many options to the mpirun command:
 
-    1. --host [host:slots]: A comma-delimited list of hosts and the number of process slots on each host.
-    2. -mca btl_tcp_if_include [network_interface_name]: Tell OpenMPI to use the given network interface name for
+    * --host [host:slots]: A comma-delimited list of hosts and the number of process slots on each host.
+    * -mca btl_tcp_if_include [network_interface_name]: Tell OpenMPI to use the given network interface name for
          byte transfer layer communication.
-    3. -mca oob_tcp_if_include [network_interface_name]: Tell OpenMPI to use the given network interface name for
+    * -mca oob_tcp_if_include [network_interface_name]: Tell OpenMPI to use the given network interface name for
          out-of-band communication.
-    4. -mca btl ^openib: Don't look for openib components (this just avoids a warning)
-    5. -x PATH: pass $PATH from the current environment to the execution environments on remote hosts
-    6. -x LD_LIBRARY_PATH: pass $LD_LIBRARY_PATH from the current environment to the execution environments on remote
+    * -mca btl ^openib: Don't look for openib components (this just avoids a warning)
+    * -x PATH: pass $PATH from the current environment to the execution environments on remote hosts
+    * -x LD_LIBRARY_PATH: pass $LD_LIBRARY_PATH from the current environment to the execution environments on remote
          hosts
-    7. -x LD_PRELOAD=[changehostname library]: Load the changehostname library to return correct values from gethostname
+    * -x LD_PRELOAD=[changehostname library]: Load the changehostname library to return correct values from gethostname
          system calls.
-    8. -mca orte_abort_on_non_zero_status 1: Return a non-zero exit code if any process exits with a non-zero exit code.
-    9. -x NCCL_DEBUG=INFO: Enable info level logging for NCCL.
-    10. -x NCCL_SOCKET_IFNAME=[network_interface_name]: Tell NCCL to use the given network interface name for socket
+    * -mca orte_abort_on_non_zero_status 1: Return a non-zero exit code if any process exits with a non-zero exit code.
+    * -x NCCL_DEBUG=INFO: Enable info level logging for NCCL.
+    * -x NCCL_SOCKET_IFNAME=[network_interface_name]: Tell NCCL to use the given network interface name for socket
          communication.
-    11. -np [num_processes]: total number of processes to run across all nodes.
+    * -np [num_processes]: total number of processes to run across all nodes.
 
     Args:
         training_environment: training environment object containing environment variables,
