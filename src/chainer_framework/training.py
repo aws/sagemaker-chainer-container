@@ -42,7 +42,7 @@ def train(user_module, training_environment):
     * `num_processes`: the total number of processes to run.
     * `additional_mpi_options`: a string of options to pass to mpirun.
 
-    For more on how distributed
+    For more on how distributed training uses these parameters, please see :func:`_get_mpi_command`.
 
     Args:
         user_module : a user supplied module.
@@ -52,9 +52,7 @@ def train(user_module, training_environment):
 
     use_mpi = training_environment.hyperparameters.get('use_mpi', len(training_environment.hosts) > 1)
 
-    if not use_mpi:
-        _run_training()
-    else:
+    if use_mpi:
         current_host = training_environment.current_host
         hosts = training_environment.hosts
         _change_hostname(current_host)
@@ -64,6 +62,9 @@ def train(user_module, training_environment):
         else:
             _start_ssh_daemon()
             _wait_for_training_to_finish(training_environment)
+    else:
+        _run_training()
+
 
 
 def _run_training():
