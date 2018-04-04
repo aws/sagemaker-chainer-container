@@ -1,5 +1,5 @@
 import os
-from os.path import join
+
 
 import numpy as np
 
@@ -7,7 +7,7 @@ from test.utils import local_mode
 from test.utils.local_mode import request
 
 mnist_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'resources', 'mnist')
-data_dir = join(mnist_path, 'data')
+data_dir = os.path.join(mnist_path, 'data')
 
 def test_chainer_mnist_single_machine(docker_image, opt_ml, use_gpu):
     customer_script = 'single_machine_customer_script.py'
@@ -20,8 +20,8 @@ def test_chainer_mnist_single_machine(docker_image, opt_ml, use_gpu):
                                'output/data/cg.dot', 'output/data/log', 'output/data/loss.png']
     _assert_files_exist(opt_ml, files)
     assert not local_mode.file_exists(opt_ml, 'output/failure'), 'Failure happened'
-    with local_mode.serve(join(mnist_path, customer_script), model_dir=None, image_name=docker_image, opt_ml=opt_ml,
-                          use_gpu=use_gpu):
+    with local_mode.serve(os.path.join(mnist_path, customer_script), model_dir=None, image_name=docker_image,
+                          opt_ml=opt_ml, use_gpu=use_gpu):
         request_data = np.zeros((100, 784))
         data_as_list = request_data.tolist()
         _predict_and_assert_response_length(data_as_list, 'application/json')
@@ -39,7 +39,8 @@ def test_chainer_mnist_custom_loop(docker_image, opt_ml, use_gpu):
     _assert_files_exist(opt_ml, files)
     assert not local_mode.file_exists(opt_ml, 'output/failure'), 'Failure happened'
 
-    with local_mode.serve(join(mnist_path, customer_script), model_dir=None, image_name=docker_image, opt_ml=opt_ml):
+    with local_mode.serve(os.path.join(mnist_path, customer_script), model_dir=None, image_name=docker_image,
+                          opt_ml=opt_ml):
         request_data = np.zeros((100, 784))
         data_as_list = request_data.tolist()
         _predict_and_assert_response_length(data_as_list, 'application/json')
@@ -64,7 +65,8 @@ def test_chainer_mnist_distributed(docker_image, opt_ml, use_gpu):
     _assert_files_exist(opt_ml, files)
     assert not local_mode.file_exists(opt_ml, 'output/failure'), 'Failure happened'
 
-    with local_mode.serve(join(mnist_path, customer_script), model_dir=None, image_name=docker_image, opt_ml=opt_ml):
+    with local_mode.serve(os.path.join(mnist_path, customer_script), model_dir=None, image_name=docker_image,
+                          opt_ml=opt_ml):
         request_data = np.zeros((100, 784))
         data_as_list = request_data.tolist()
         _predict_and_assert_response_length(data_as_list, 'application/json')
@@ -72,7 +74,7 @@ def test_chainer_mnist_distributed(docker_image, opt_ml, use_gpu):
 
 
 def _predict_and_assert_response_length(data, content_type):
-    # TODO: npz
+    # TODO (andremoeller): add support for a binary format (possibly npz)
     predict_response = request(data, request_type=content_type)
     assert len(predict_response) == len(data)
 

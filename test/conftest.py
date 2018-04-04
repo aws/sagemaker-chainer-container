@@ -62,14 +62,14 @@ def processor(request):
 def base_image_tag(request, framework_version, processor, py_version):
     provided_tag = request.config.getoption('--tag')
     default_tag = '{}-{}-{}'.format(framework_version, processor, py_version)
-    return provided_tag if provided_tag is not None else default_tag
+    return provided_tag if provided_tag else default_tag
 
 
 @pytest.fixture(scope='session')
 def tag(request, framework_version, processor, py_version):
     provided_tag = request.config.getoption('--tag')
     default_tag = '{}-{}-{}'.format(framework_version, processor, py_version)
-    return provided_tag if provided_tag is not None else default_tag
+    return provided_tag if provided_tag else default_tag
 
 
 @pytest.fixture(scope='session')
