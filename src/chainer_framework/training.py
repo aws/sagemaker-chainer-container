@@ -24,7 +24,6 @@ _CHANGE_HOSTNAME_LIBRARY = "/libchangehostname.so"
 
 MODEL_FILE_NAME = "model.npz"
 
-
 @engine.train()
 def train(user_module, training_environment):
     """Runs Chainer training on a user supplied module in either a local or distributed
@@ -193,13 +192,13 @@ def _wait_for_worker_nodes_to_start_sshd(hosts, interval=1, timeout_in_seconds=1
         while len(hosts) > 0:
             logger.info("hosts that aren't SSHable yet: " + str(hosts))
             for host in hosts:
-                host_is_sshable = _can_connect(host, 22)
+                host_is_sshable = _can_connect(host, 22, socket.socket(socket.AF_INET, socket.SOCK_STREAM))
                 if host_is_sshable:
                     hosts.remove(host)
             time.sleep(interval)
 
 
-def _can_connect(host, port, s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)):
+def _can_connect(host, port, s):
     try:
         logger.debug("testing connection to host " + host)
         s.connect((host, port))
