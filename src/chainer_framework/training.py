@@ -22,6 +22,8 @@ _MPI_IS_RUNNING = "/mpi_is_running"
 _MPI_IS_FINISHED = "/mpi_is_finished"
 _CHANGE_HOSTNAME_LIBRARY = "/libchangehostname.so"
 
+MODEL_FILE_NAME = "model.npz"
+
 
 @engine.train()
 def train(user_module, training_environment):
@@ -63,26 +65,27 @@ def train(user_module, training_environment):
             _start_ssh_daemon()
             _wait_for_training_to_finish(training_environment)
     else:
-        _run_training()
+        _run_training(training_environment, user_module)
 
 
-
-def _run_training():
-    env = TrainingEnvironment()
-    user_module = env.import_user_module()
+def _run_training(env, user_module):
     training_parameters = env.matching_parameters(user_module.train)
     logger.info('Invoking user training script.')
     model = user_module.train(**training_parameters)
 
     hosts = env.hosts
-    on_master_node = _get_master_host_name(hosts)
+    on_master_node = env.current_host == _get_master_host_name(hosts)
     if model and on_master_node:
         if hasattr(user_module, 'save'):
             user_module.save(model, env.model_dir)
         else:
-            serializers.save_npz(os.path.join(env.model_dir, 'model.npz'), model)
+            _default_save(env, model)
     if not model and on_master_node:
-        logger.warn("Model object is empty. No model was saved!")
+        logger.warn("Model object is empty. No model was saved! train() should return a model.")
+
+
+def _default_save(env, model):
+    serializers.save_npz(os.path.join(env.model_dir, MODEL_FILE_NAME), model)
 
 
 def _change_hostname(current_host):
@@ -91,7 +94,7 @@ def _change_hostname(current_host):
     Args:
         current_host (str): name of the current host, such as algo-1, algo-2, etc.
     """
-    os.system("change-hostname.sh %s" % current_host)
+    os.system("change-hostname.sh {}".format(current_host))
 
 
 def _get_master_host_name(hosts):
@@ -154,12 +157,12 @@ def _get_mpi_command(training_environment):
     additional_mpi_options = str(hyperparameters.get('additional_mpi_options', ''))
 
     mpi_command = 'mpirun --allow-run-as-root --host {}'.format(",".join(host_list)) \
-                  + " -mca btl_tcp_if_include {0}".format(training_environment.network_interface_name) \
-                  + " -mca oob_tcp_if_include {0}".format(training_environment.network_interface_name) \
+                  + " -mca btl_tcp_if_include {}".format(training_environment.network_interface_name) \
+                  + " -mca oob_tcp_if_include {}".format(training_environment.network_interface_name) \
                   + " -mca btl ^openib" \
                   + " -x PATH" \
                   + " -x LD_LIBRARY_PATH" \
-                  + " -x LD_PRELOAD=".format(_CHANGE_HOSTNAME_LIBRARY) \
+                  + " -x LD_PRELOAD={}".format(_CHANGE_HOSTNAME_LIBRARY) \
                   + " -mca orte_abort_on_non_zero_status 1" \
                   + " -x NCCL_DEBUG=INFO" \
                   + " -x NCCL_SOCKET_IFNAME={}".format(training_environment.network_interface_name) \
@@ -185,8 +188,8 @@ def _wait_for_training_to_finish(training_environment):
     logger.info("Training process started by MPI on worker node {} stopped" .format(current_host))
 
 
-def _wait_for_worker_nodes_to_start_sshd(hosts, interval=1):
-    with timeout(seconds=180):
+def _wait_for_worker_nodes_to_start_sshd(hosts, interval=1, timeout_in_seconds=180):
+    with timeout(seconds=timeout_in_seconds):
         while len(hosts) > 0:
             logger.info("hosts that aren't SSHable yet: " + str(hosts))
             for host in hosts:
@@ -196,8 +199,7 @@ def _wait_for_worker_nodes_to_start_sshd(hosts, interval=1):
             time.sleep(interval)
 
 
-def _can_connect(host, port):
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+def _can_connect(host, port, s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)):
     try:
         logger.debug("testing connection to host " + host)
         s.connect((host, port))
@@ -227,4 +229,5 @@ def _wait_until_mpi_stops_running():
 
 
 if __name__=="__main__":
-    _run_training()
+    env = TrainingEnvironment()
+    _run_training(env, env.import_user_module())

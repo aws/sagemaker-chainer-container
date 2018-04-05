@@ -27,8 +27,7 @@ def timeout(seconds=0, minutes=0, hours=0):
 
     try:
         signal.signal(signal.SIGALRM, handler)
-        signal.alarm(limit)
-
+        signal.setitimer(signal.ITIMER_REAL, limit)
         yield
     finally:
         signal.alarm(0)
