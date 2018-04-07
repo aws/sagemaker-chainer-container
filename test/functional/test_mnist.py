@@ -1,6 +1,5 @@
 import os
 
-
 import numpy as np
 
 from test.utils import local_mode
