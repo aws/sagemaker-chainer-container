@@ -59,13 +59,6 @@ def processor(request):
 
 
 @pytest.fixture(scope='session')
-def base_image_tag(request, framework_version, processor, py_version):
-    provided_tag = request.config.getoption('--tag')
-    default_tag = '{}-{}-{}'.format(framework_version, processor, py_version)
-    return provided_tag if provided_tag else default_tag
-
-
-@pytest.fixture(scope='session')
 def tag(request, framework_version, processor, py_version):
     provided_tag = request.config.getoption('--tag')
     default_tag = '{}-{}-{}'.format(framework_version, processor, py_version)
@@ -103,16 +96,16 @@ def install_container_support(request):
 
 
 @pytest.fixture(scope='session', autouse=True)
-def build_base_image(request, framework_version, processor, base_image_tag, docker_base_name):
+def build_base_image(request, framework_version, processor, tag, docker_base_name):
     build_base_image = request.config.getoption('--build-base-image')
     if build_base_image:
         return local_mode.build_base_image(framework_name=docker_base_name,
                                            framework_version=framework_version,
-                                           base_image_tag=base_image_tag,
+                                           base_image_tag=tag,
                                            processor=processor,
                                            cwd=os.path.join(dir_path, '..'))
 
-    return base_image_tag
+    return tag
 
 
 @pytest.fixture(scope='session', autouse=True)
