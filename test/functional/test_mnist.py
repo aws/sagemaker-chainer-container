@@ -50,11 +50,12 @@ def test_chainer_mnist_custom_loop(docker_image, opt_ml, use_gpu):
 def test_chainer_mnist_distributed(docker_image, opt_ml, use_gpu):
     customer_script = 'distributed_customer_script.py'
     cluster_size = 2
+    # pure_nccl communicator hangs when only one gpu is available.
     hyperparameters = {'process_slots_per_host': 1,
                        'num_processes': cluster_size,
                        'batch_size': 10000,
                        'epochs': 1,
-                       'rank': 'inter_rank'}
+                       'communicator':'hierarchical'}
 
     local_mode.train(customer_script, data_dir, docker_image, opt_ml, hyperparameters=hyperparameters,
                      cluster_size=cluster_size, source_dir=mnist_path, use_gpu=use_gpu)

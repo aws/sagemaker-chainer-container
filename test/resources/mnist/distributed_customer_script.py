@@ -10,7 +10,6 @@ import chainermn
 from chainer import serializers, training
 from chainer.training import extensions
 from chainer.datasets import tuple_dataset
-from mpi4py import MPI
 
 
 class MLP(chainer.Chain):
@@ -55,18 +54,11 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir, curren
     frequency = hyperparameters.get('frequency', epochs)
     units = hyperparameters.get('unit', 1000)
     communicator = hyperparameters.get('communicator', 'naive' if num_gpus == 0 else 'pure_nccl')
-    rank = hyperparameters.get('rank', 'intra_rank')
 
     comm = chainermn.create_communicator(communicator)
-
-    # When running in local mode, setting rank to 'inter_rank' simulates multi-node training.
-    if rank == 'inter_rank':
-        device = comm.inter_rank if num_gpus > 0 else -1
-    else:
-        device = comm.intra_rank if num_gpus > 0 else -1
+    device = comm.intra_rank if num_gpus > 0 else -1
 
     print('==========================================')
-    print('Num process (COMM_WORLD): {}'.format(MPI.COMM_WORLD.Get_size()))
     print('Using {} communicator'.format(comm))
     print('Num unit: {}'.format(units))
     print('Num Minibatch-size: {}'.format(batch_size))
