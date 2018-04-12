@@ -4,6 +4,7 @@ import shlex
 import socket
 import subprocess
 import time
+from distutils.util import strtobool
 
 from chainer_framework.timeout import timeout
 from chainer import serializers
@@ -51,7 +52,7 @@ def train(user_module, training_environment):
                                training arguments and hyperparameters
     """
 
-    use_mpi = bool(training_environment.hyperparameters.get('use_mpi', len(training_environment.hosts) > 1))
+    use_mpi = _use_mpi(training_environment.hyperparameters, training_environment.hosts)
 
     if use_mpi:
         current_host = training_environment.current_host
@@ -65,6 +66,13 @@ def train(user_module, training_environment):
             _wait_for_training_to_finish(training_environment)
     else:
         _run_training(training_environment, user_module)
+
+
+def _use_mpi(hyperparameters, hosts):
+    if 'use_mpi' in hyperparameters:
+        return bool(strtobool(hyperparameters['use_mpi']))
+    else:
+        return len(hosts) > 1
 
 
 def _run_training(env, user_module):
@@ -144,16 +152,16 @@ def _get_mpi_command(training_environment):
     """
     num_gpus = training_environment.available_gpus
     hyperparameters = training_environment.hyperparameters
-    process_slots_per_host = int(hyperparameters.get('process_slots_per_host', num_gpus if num_gpus > 0 else 1))
+    process_slots_per_host = _process_slots_per_host(hyperparameters, num_gpus)
 
     num_hosts = len(training_environment.hosts)
-    num_processes = int(hyperparameters.get('num_processes', process_slots_per_host * num_hosts))
+    num_processes = _num_processes(hyperparameters, process_slots_per_host, num_hosts)
 
     # By default, use one process per GPU, or one process per node (if training with CPU).
     host_list = training_environment.hosts if process_slots_per_host == 1 else \
         [host + ':{}'.format(process_slots_per_host) for host in training_environment.hosts]
 
-    additional_mpi_options = str(hyperparameters.get('additional_mpi_options', ''))
+    additional_mpi_options = _additional_mpi_options(hyperparameters)
 
     mpi_command = 'mpirun --allow-run-as-root --host {}'.format(",".join(host_list)) \
                   + " -mca btl_tcp_if_include {}".format(training_environment.network_interface_name) \
@@ -169,6 +177,18 @@ def _get_mpi_command(training_environment):
                   + " {} ".format(additional_mpi_options) \
                   + " {}".format(_MPI_SCRIPT)
     return mpi_command
+
+
+def _process_slots_per_host(hyperparameters, num_gpus):
+    return int(hyperparameters.get('process_slots_per_host', num_gpus if num_gpus > 0 else 1))
+
+
+def _num_processes(hyperparameters, process_slots_per_host, num_hosts):
+    return int(hyperparameters.get('num_processes', process_slots_per_host * num_hosts))
+
+
+def _additional_mpi_options(hyperparameters):
+    return str(hyperparameters.get('additional_mpi_options', ''))
 
 
 def _start_ssh_daemon():

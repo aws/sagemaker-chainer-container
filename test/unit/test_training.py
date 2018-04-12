@@ -12,7 +12,8 @@ from chainer import serializers
 from chainer_framework.training import _CHANGE_HOSTNAME_LIBRARY, _MPI_IS_RUNNING, _MPI_IS_FINISHED, \
     MODEL_FILE_NAME, train, _change_hostname, _get_master_host_name, _run_training, \
     _run_mpi_on_all_nodes, _get_mpi_command, _start_ssh_daemon, _wait_for_training_to_finish, _default_save, \
-    _wait_for_worker_nodes_to_start_sshd, _can_connect, _wait_for_mpi_to_start_running, _wait_until_mpi_stops_running
+    _wait_for_worker_nodes_to_start_sshd, _can_connect, _wait_for_mpi_to_start_running, _wait_until_mpi_stops_running, \
+    _use_mpi, _num_processes, _process_slots_per_host, _additional_mpi_options
 from chainer_framework.timeout import TimeoutError
 
 
@@ -219,6 +220,28 @@ def test_get_mpi_command(master_node_distributed_training_env):
     assert "-np 2" in mpi_command
 
 
+def test_get_mpi_command_with_additional_hyperparameters(master_node_distributed_training_env):
+    master_node_distributed_training_env.hyperparameters = {'num_processes': 1024,
+                                                            'process_slots_per_host':128,
+                                                            'additional_mpi_options': '-X MY_ENVIRONMENT_VARIABLE'}
+
+    mpi_command = _get_mpi_command(master_node_distributed_training_env)
+
+    network_interface_name = master_node_distributed_training_env.network_interface_name
+    assert "mpirun" in mpi_command
+    assert "--allow-run-as-root" in mpi_command
+    assert "-host algo-1:128,algo-2:128" in mpi_command
+    assert "-mca btl_tcp_if_include {}".format(network_interface_name) in mpi_command
+    assert "-mca oob_tcp_if_include {}".format(network_interface_name) in mpi_command
+    assert "-x PATH" in mpi_command
+    assert "-x LD_LIBRARY_PATH" in mpi_command
+    assert "-x LD_PRELOAD={}".format(_CHANGE_HOSTNAME_LIBRARY) in mpi_command
+    assert "-mca orte_abort_on_non_zero_status 1" in mpi_command
+    assert "-x NCCL_SOCKET_IFNAME={}".format(network_interface_name) in mpi_command
+    assert "-np 1024" in mpi_command
+    assert "-X MY_ENVIRONMENT_VARIABLE" in mpi_command
+
+
 def test_get_mpi_command_with_gpus(master_node_distributed_training_env):
     master_node_distributed_training_env.available_gpus = 4
 
@@ -330,3 +353,30 @@ def test_can_connect():
     assert second_call == False
     assert third_call == True
     assert mock_socket.connect.call_count == 3
+
+
+def test_use_mpi():
+    assert _use_mpi({'use_mpi': 'True'}, [])
+    assert _use_mpi({'use_mpi': 'true'}, [])
+    assert _use_mpi({}, ['algo-1', 'algo-2'])
+    assert not _use_mpi({'use_mpi': 'False'}, ['algo-1'])
+    assert not _use_mpi({'use_mpi': 'false'}, [])
+    assert not _use_mpi({}, ['algo-1'])
+
+
+def test_num_processes():
+    # hyperparameters, process_slots_per_host, num_hosts
+    assert _num_processes({'num_processes': 16}, 2, 3) == 16
+    assert _num_processes({}, 2, 3) == 6
+
+
+def test_process_slots_per_host():
+    assert _process_slots_per_host({}, 0) == 1
+    assert _process_slots_per_host({}, 1) == 1
+    assert _process_slots_per_host({}, 2) == 2
+
+
+def test_additional_mpi_options():
+    assert '' == _additional_mpi_options({})
+    assert "-X MY_ENVIRONMENT_VARIABLE" == _additional_mpi_options({'additional_mpi_options':
+                                                                    "-X MY_ENVIRONMENT_VARIABLE"})
