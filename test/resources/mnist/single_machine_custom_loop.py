@@ -48,8 +48,8 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb
 
 
 def train(channel_input_dirs, hyperparameters, num_gpus):
-    train_file = np.load(os.path.join(channel_input_dirs['training'], 'train.npz'))
-    test_file = np.load(os.path.join(channel_input_dirs['training'], 'test.npz'))
+    train_file = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))
+    test_file = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))
 
     preprocess_mnist_options = {'withlabel': True,
                                 'ndim': 1,

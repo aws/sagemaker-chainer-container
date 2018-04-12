@@ -51,7 +51,7 @@ def train(user_module, training_environment):
                                training arguments and hyperparameters
     """
 
-    use_mpi = training_environment.hyperparameters.get('use_mpi', len(training_environment.hosts) > 1)
+    use_mpi = bool(training_environment.hyperparameters.get('use_mpi', len(training_environment.hosts) > 1))
 
     if use_mpi:
         current_host = training_environment.current_host

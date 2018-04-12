@@ -32,7 +32,7 @@ setup(
         'Programming Language :: Python :: 3.5',
     ],
 
-    install_requires=[],
+    install_requires=['sagemaker-container-support', 'chainer'],
     extras_require={
         'test': ['tox', 'flake8', 'pytest', 'pytest-cov', 'pytest-xdist', 'mock', 'Flask', 'boto3>=1.4.8',
                  'docker-compose', 'nvidia-docker-compose', 'sagemaker', 'PyYAML']

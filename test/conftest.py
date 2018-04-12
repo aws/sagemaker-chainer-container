@@ -4,8 +4,11 @@ import platform
 import shutil
 import tempfile
 
+import boto3
 import pytest
 
+
+from sagemaker import Session
 
 from test.utils import local_mode
 
@@ -24,7 +27,9 @@ def pytest_addoption(parser):
     parser.addoption('--build-image', '-D', action="store_true")
     parser.addoption('--build-base-image', '-B', action="store_true")
     parser.addoption('--install-container-support', '-C', action="store_true")
-    parser.addoption('--docker-base-name', default='chainer')
+    parser.addoption('--aws-id')
+    parser.addoption('--instance-type')
+    parser.addoption('--docker-base-name', default='preprod-chainer')
     parser.addoption('--region', default='us-west-2')
     parser.addoption('--framework-version', default='3.4.0')
     parser.addoption('--py-version', choices=['2', '3'], default='2')
@@ -93,6 +98,31 @@ def install_container_support(request):
     install = request.config.getoption('--install-container-support')
     if install:
         local_mode.install_container_support()
+
+
+@pytest.fixture(scope='session')
+def aws_id(request):
+    return request.config.getoption('--aws-id')
+
+
+@pytest.fixture(scope='session')
+def instance_type(request):
+    return request.config.getoption('--instance-type')
+
+
+@pytest.fixture(scope='session')
+def docker_registry(aws_id, region):
+    return '{}.dkr.ecr.{}.amazonaws.com'.format(aws_id, region)
+
+
+@pytest.fixture(scope='session')
+def ecr_image(docker_registry, docker_base_name, tag):
+    return '{}/{}:{}'.format(docker_registry, docker_base_name, tag)
+
+
+@pytest.fixture(scope='session')
+def sagemaker_session(region):
+    return Session(boto_session=boto3.Session(region_name=region))
 
 
 @pytest.fixture(scope='session', autouse=True)
