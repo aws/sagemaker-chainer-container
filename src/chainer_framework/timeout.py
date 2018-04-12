@@ -5,7 +5,7 @@ from contextlib import contextmanager
 class TimeoutError(Exception):
     pass
 
-
+#TODO (mvsusp): Move this to container support.
 @contextmanager
 def timeout(seconds=0, minutes=0, hours=0):
     """

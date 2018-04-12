@@ -374,6 +374,8 @@ def test_process_slots_per_host():
     assert _process_slots_per_host({}, 0) == 1
     assert _process_slots_per_host({}, 1) == 1
     assert _process_slots_per_host({}, 2) == 2
+    assert _process_slots_per_host({'process_slots_per_host': 1}, 2) == 1
+    assert _process_slots_per_host({'process_slots_per_host': 200}, 1) == 200
 
 
 def test_additional_mpi_options():
