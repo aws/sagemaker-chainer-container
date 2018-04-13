@@ -1,6 +1,5 @@
 import json
 import numpy as np
-from six import StringIO
 
 from container_support.app import ServingEngine
 from chainer_framework import numpy_parser, csv_parser
@@ -26,22 +25,6 @@ def model_fn(model_dir):
                               'See documentation for model_fn at https://github.com/aws/sagemaker-python-sdk')
 
 
-class _CSV:
-    def __init__(self):
-        pass
-
-    @staticmethod
-    def load(data):
-        stream = StringIO(data)
-        return np.genfromtxt(stream, dtype=np.float32, delimiter=',')
-
-    @staticmethod
-    def dumps(data):
-        stream = StringIO()
-        np.savetxt(stream, data, delimiter=',', fmt='%s')
-        return stream.getvalue()
-
-
 @engine.input_fn()
 def input_fn(serialized_input_data, content_type):
     """A default input_fn that can handle JSON, CSV and NPZ formats.
@@ -53,17 +36,14 @@ def input_fn(serialized_input_data, content_type):
     """
 
     if content_type == NPZ_CONTENT_TYPE:
-        stream = StringIO(serialized_input_data)
-        return np.load(stream)
+        return numpy_parser.loads(serialized_input_data)
 
     if content_type == JSON_CONTENT_TYPE:
         data = json.loads(serialized_input_data)
         return np.array(data, dtype=np.float32)
 
     if content_type == CSV_CONTENT_TYPE:
-        stream = StringIO(serialized_input_data)
-        data = np.genfromtxt(stream, dtype=np.float32, delimiter=',')
-        return data
+        return csv_parser.loads(serialized_input_data)
 
     raise UnsupportedContentTypeError(content_type)
 
@@ -99,14 +79,10 @@ def output_fn(prediction_output, accept):
         return json.dumps(prediction_output), JSON_CONTENT_TYPE
 
     if accept == NPZ_CONTENT_TYPE:
-        stream = StringIO()
-        np.save(stream, prediction_output)
-        return stream.getvalue(), NPZ_CONTENT_TYPE
+        return numpy_parser.dumps(prediction_output), NPZ_CONTENT_TYPE
 
     if accept == CSV_CONTENT_TYPE:
-        stream = StringIO()
-        np.savetxt(stream, prediction_output, delimiter=',', fmt='%s')
-        return stream.getvalue(), CSV_CONTENT_TYPE
+        return csv_parser.dumps(prediction_output), CSV_CONTENT_TYPE
 
     raise UnsupportedAcceptTypeError(accept)
 

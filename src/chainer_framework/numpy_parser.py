@@ -1,14 +1,14 @@
 import numpy as np
-from six import StringIO
+from six import BytesIO
 
 
 def loads(data):
-    stream = StringIO(data)
+    stream = BytesIO(data)
     return np.load(stream)
 
 
 def dumps(data):
-    buffer = StringIO()
+    buffer = BytesIO()
     np.save(buffer, data)
     buffer.seek(0)
     return buffer.getvalue()

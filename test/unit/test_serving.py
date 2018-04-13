@@ -7,7 +7,7 @@ from chainer import Variable
 from container_support.serving import JSON_CONTENT_TYPE, CSV_CONTENT_TYPE, \
     UnsupportedContentTypeError, UnsupportedAcceptTypeError
 
-from chainer_framework import csv_parser
+from chainer_framework import csv_parser, numpy_parser
 from chainer_framework.serving import model_fn, input_fn, predict_fn, output_fn, transform_fn, NPZ_CONTENT_TYPE
 
 
@@ -40,9 +40,8 @@ def test_input_fn_json(np_array):
     assert np.array_equal(np_array, deserialized_np_array)
 
 
-def test_input_fn_np_array(np_array):
-    from chainer_framework import numpy_parser
-    numpy_parser.dumps(np_array)
+def test_input_fn_npz(np_array):
+
     deserialized_np_array = input_fn(numpy_parser.dumps(np_array), NPZ_CONTENT_TYPE)
 
     assert np.array_equal(np_array, deserialized_np_array)
@@ -84,6 +83,14 @@ def test_output_fn_csv(np_array):
     assert CSV_CONTENT_TYPE in output
 
 
+def test_output_fn_npz(np_array):
+
+    transformed_data, content_type = output_fn(np_array, NPZ_CONTENT_TYPE)
+
+    assert numpy_parser.dumps(np_array) == transformed_data
+    assert NPZ_CONTENT_TYPE == content_type
+
+
 def test_input_fn_bad_accept():
     with pytest.raises(UnsupportedAcceptTypeError):
         output_fn('', 'application/not_supported')
@@ -104,9 +111,7 @@ def test_transform_fn_csv(np_array):
     assert '2.0,2.0\n2.0,2.0\n' == transformed_data
     assert CSV_CONTENT_TYPE == content_type
 
-def test_transform_fn_np(np_array):
-    from chainer_framework import numpy_parser
-    numpy_parser.dumps(np_array)
+def test_transform_fn_npz(np_array):
 
     transformed_data, content_type = transform_fn(FakeModel(), numpy_parser.dumps(np_array), NPZ_CONTENT_TYPE,
                                                   NPZ_CONTENT_TYPE)

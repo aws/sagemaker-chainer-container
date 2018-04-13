@@ -603,7 +603,7 @@ def request(data, request_type=JSON_CONTENT_TYPE):
                                       data=serializer.dumps(data),
                                       headers={'Content-type': request_type,
                                                'Accept': request_type}).content
-    print(serialized_output)
+
     return serializer.loads(serialized_output)
 
 
