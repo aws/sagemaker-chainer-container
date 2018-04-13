@@ -3,10 +3,13 @@ import numpy as np
 from six import StringIO
 
 from container_support.app import ServingEngine
+from chainer_framework import numpy_parser, csv_parser
 from container_support.serving import JSON_CONTENT_TYPE, CSV_CONTENT_TYPE, \
     UnsupportedContentTypeError, UnsupportedAcceptTypeError
 
 engine = ServingEngine()
+
+NPZ_CONTENT_TYPE = "application/npz"
 
 
 @engine.model_fn()
@@ -22,6 +25,23 @@ def model_fn(model_dir):
     raise NotImplementedError('Please provide a model_fn implementation. '
                               'See documentation for model_fn at https://github.com/aws/sagemaker-python-sdk')
 
+
+class _CSV:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def load(data):
+        stream = StringIO(data)
+        return np.genfromtxt(stream, dtype=np.float32, delimiter=',')
+
+    @staticmethod
+    def dumps(data):
+        stream = StringIO()
+        np.savetxt(stream, data, delimiter=',', fmt='%s')
+        return stream.getvalue()
+
+
 @engine.input_fn()
 def input_fn(serialized_input_data, content_type):
     """A default input_fn that can handle JSON, CSV and NPZ formats.
@@ -31,11 +51,14 @@ def input_fn(serialized_input_data, content_type):
         content_type: the request content_type
     Returns: deserialized input_data
     """
+
+    if content_type == NPZ_CONTENT_TYPE:
+        stream = StringIO(serialized_input_data)
+        return np.load(stream)
+
     if content_type == JSON_CONTENT_TYPE:
         data = json.loads(serialized_input_data)
         return np.array(data, dtype=np.float32)
-
-    # TODO (andremoeller): support a binary format (possibly npz) as well.
 
     if content_type == CSV_CONTENT_TYPE:
         stream = StringIO(serialized_input_data)
@@ -75,7 +98,10 @@ def output_fn(prediction_output, accept):
     if accept == JSON_CONTENT_TYPE:
         return json.dumps(prediction_output), JSON_CONTENT_TYPE
 
-        # TODO (andremoeller): support a binary format (possibly npz) as well.
+    if accept == NPZ_CONTENT_TYPE:
+        stream = StringIO()
+        np.save(stream, prediction_output)
+        return stream.getvalue(), NPZ_CONTENT_TYPE
 
     if accept == CSV_CONTENT_TYPE:
         stream = StringIO()

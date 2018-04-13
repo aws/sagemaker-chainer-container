@@ -6,8 +6,9 @@ from chainer import Variable
 
 from container_support.serving import JSON_CONTENT_TYPE, CSV_CONTENT_TYPE, \
     UnsupportedContentTypeError, UnsupportedAcceptTypeError
-from test.utils import csv_parser
-from chainer_framework.serving import model_fn, input_fn, predict_fn, output_fn, transform_fn
+
+from chainer_framework import csv_parser
+from chainer_framework.serving import model_fn, input_fn, predict_fn, output_fn, transform_fn, NPZ_CONTENT_TYPE
 
 
 @pytest.fixture()
@@ -39,6 +40,14 @@ def test_input_fn_json(np_array):
     assert np.array_equal(np_array, deserialized_np_array)
 
 
+def test_input_fn_np_array(np_array):
+    from chainer_framework import numpy_parser
+    numpy_parser.dumps(np_array)
+    deserialized_np_array = input_fn(numpy_parser.dumps(np_array), NPZ_CONTENT_TYPE)
+
+    assert np.array_equal(np_array, deserialized_np_array)
+
+
 def test_input_fn_csv(np_array):
     flattened_np_array = np.ndarray.flatten(np_array)
     csv_data = csv_parser.dumps(np.ndarray.flatten(np_array))
@@ -54,6 +63,7 @@ def test_input_fn_bad_content_type():
 
 
 def test_predict_fn(np_array):
+
     predicted_data = predict_fn(np_array, FakeModel())
     assert np.array_equal(fake_predict(np_array), predicted_data)
 
@@ -81,15 +91,26 @@ def test_input_fn_bad_accept():
 
 def test_transform_fn_json(np_array):
 
-    transformed_data = transform_fn(FakeModel(), json.dumps(np_array.tolist()), JSON_CONTENT_TYPE, JSON_CONTENT_TYPE)
+    transformed_data, content_type = transform_fn(FakeModel(), json.dumps(np_array.tolist()), JSON_CONTENT_TYPE, JSON_CONTENT_TYPE)
 
-    assert '[[2.0, 2.0], [2.0, 2.0]]' in transformed_data
-    assert JSON_CONTENT_TYPE in transformed_data
+    assert '[[2.0, 2.0], [2.0, 2.0]]' == transformed_data
+    assert JSON_CONTENT_TYPE == content_type
 
 
 def test_transform_fn_csv(np_array):
 
-    transformed_data = transform_fn(FakeModel(), csv_parser.dumps(np_array.tolist()), CSV_CONTENT_TYPE, CSV_CONTENT_TYPE)
+    transformed_data, content_type = transform_fn(FakeModel(), csv_parser.dumps(np_array.tolist()), CSV_CONTENT_TYPE, CSV_CONTENT_TYPE)
 
-    assert '2.0,2.0\n2.0,2.0\n' in transformed_data
-    assert CSV_CONTENT_TYPE in transformed_data
+    assert '2.0,2.0\n2.0,2.0\n' == transformed_data
+    assert CSV_CONTENT_TYPE == content_type
+
+def test_transform_fn_np(np_array):
+    from chainer_framework import numpy_parser
+    numpy_parser.dumps(np_array)
+
+    transformed_data, content_type = transform_fn(FakeModel(), numpy_parser.dumps(np_array), NPZ_CONTENT_TYPE,
+                                                  NPZ_CONTENT_TYPE)
+
+    transformed_numpy_array = numpy_parser.loads(transformed_data)
+    assert np.array_equal(transformed_numpy_array, fake_predict(np_array))
+    assert NPZ_CONTENT_TYPE == content_type

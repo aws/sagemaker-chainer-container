@@ -1,6 +1,5 @@
 import json
 import logging
-import pickle
 import shutil
 import subprocess
 import sys
@@ -12,11 +11,12 @@ import boto3
 import os
 import requests
 import yaml
-import csv_parser
 
+from chainer_framework import numpy_parser, csv_parser
 from botocore.exceptions import ClientError
 from os.path import join
 from sagemaker import fw_utils
+from chainer_framework.serving import NPZ_CONTENT_TYPE
 
 
 CYAN_COLOR = '\033[36m'
@@ -596,11 +596,14 @@ def request(data, request_type=JSON_CONTENT_TYPE):
         serializer = json
     elif request_type == CSV_CONTENT_TYPE:
         serializer = csv_parser
-    else:
-        serializer = pickle
+    elif request_type == NPZ_CONTENT_TYPE:
+        serializer = numpy_parser
+
     serialized_output = requests.post(REQUEST_URL,
                                       data=serializer.dumps(data),
                                       headers={'Content-type': request_type,
                                                'Accept': request_type}).content
     print(serialized_output)
     return serializer.loads(serialized_output)
+
+

@@ -330,3 +330,12 @@ def test_can_connect():
     assert second_call == False
     assert third_call == True
     assert mock_socket.connect.call_count == 3
+
+
+def test_npz():
+    import numpy as np
+    import StringIO
+    array = np.ones((100, 784))
+    memfile = StringIO.StringIO()
+    np.save(memfile, array, allow_pickle=False)
+
