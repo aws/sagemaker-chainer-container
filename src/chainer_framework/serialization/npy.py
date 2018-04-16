@@ -10,6 +10,4 @@ def loads(data):
 def dumps(data):
     buffer = BytesIO()
     np.save(buffer, data)
-    buffer.seek(0)
     return buffer.getvalue()
-

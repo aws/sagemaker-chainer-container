@@ -12,11 +12,11 @@ import os
 import requests
 import yaml
 
-from chainer_framework import numpy_parser, csv_parser
 from botocore.exceptions import ClientError
 from os.path import join
 from sagemaker import fw_utils
-from chainer_framework.serving import NPZ_CONTENT_TYPE
+from chainer_framework.serving import NPY_CONTENT_TYPE
+from chainer_framework.serialization import npy, csv
 
 
 CYAN_COLOR = '\033[36m'
@@ -173,7 +173,7 @@ def purge():
 
 
 def chain_docker_cmds(cmd, cmd2):
-    docker_tags = subprocess.check_output(cmd.split(' ')).split('\n')
+    docker_tags = str(subprocess.check_output(cmd.split(' '))).split('\n')
 
     if any(docker_tags):
         try:
@@ -595,15 +595,12 @@ def request(data, request_type=JSON_CONTENT_TYPE):
     if request_type == JSON_CONTENT_TYPE:
         serializer = json
     elif request_type == CSV_CONTENT_TYPE:
-        serializer = csv_parser
-    elif request_type == NPZ_CONTENT_TYPE:
-        serializer = numpy_parser
+        serializer = csv
+    elif request_type == NPY_CONTENT_TYPE:
+        serializer = npy
 
     serialized_output = requests.post(REQUEST_URL,
                                       data=serializer.dumps(data),
                                       headers={'Content-type': request_type,
                                                'Accept': request_type}).content
-
     return serializer.loads(serialized_output)
-
-

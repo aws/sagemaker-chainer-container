@@ -1,14 +1,15 @@
 import json
 import numpy as np
 
+from chainer_framework.serialization import npy, csv
 from container_support.app import ServingEngine
-from chainer_framework import numpy_parser, csv_parser
 from container_support.serving import JSON_CONTENT_TYPE, CSV_CONTENT_TYPE, \
     UnsupportedContentTypeError, UnsupportedAcceptTypeError
 
 engine = ServingEngine()
 
-NPZ_CONTENT_TYPE = "application/npz"
+# TODO (amoeller): move this to container support.
+NPY_CONTENT_TYPE = "application/npy"
 
 
 @engine.model_fn()
@@ -35,15 +36,15 @@ def input_fn(serialized_input_data, content_type):
     Returns: deserialized input_data
     """
 
-    if content_type == NPZ_CONTENT_TYPE:
-        return numpy_parser.loads(serialized_input_data)
+    if content_type == NPY_CONTENT_TYPE:
+        return npy.loads(serialized_input_data)
 
     if content_type == JSON_CONTENT_TYPE:
         data = json.loads(serialized_input_data)
         return np.array(data, dtype=np.float32)
 
     if content_type == CSV_CONTENT_TYPE:
-        return csv_parser.loads(serialized_input_data)
+        return csv.loads(serialized_input_data)
 
     raise UnsupportedContentTypeError(content_type)
 
@@ -78,11 +79,11 @@ def output_fn(prediction_output, accept):
     if accept == JSON_CONTENT_TYPE:
         return json.dumps(prediction_output), JSON_CONTENT_TYPE
 
-    if accept == NPZ_CONTENT_TYPE:
-        return numpy_parser.dumps(prediction_output), NPZ_CONTENT_TYPE
+    if accept == NPY_CONTENT_TYPE:
+        return npy.dumps(prediction_output), NPY_CONTENT_TYPE
 
     if accept == CSV_CONTENT_TYPE:
-        return csv_parser.dumps(prediction_output), CSV_CONTENT_TYPE
+        return csv.dumps(prediction_output), CSV_CONTENT_TYPE
 
     raise UnsupportedAcceptTypeError(accept)
 

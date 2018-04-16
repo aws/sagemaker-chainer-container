@@ -21,11 +21,16 @@ def test_chainer_mnist_single_machine(docker_image, opt_ml, use_gpu):
     assert not local_mode.file_exists(opt_ml, 'output/failure'), 'Failure happened'
     with local_mode.serve(os.path.join(mnist_path, customer_script), model_dir=None, image_name=docker_image,
                           opt_ml=opt_ml, use_gpu=use_gpu):
+        test_arrays = [np.zeros((100, 784), dtype='float32'), np.zeros((100, 1, 28, 28), dtype='float32'),
+                       np.zeros((100, 28, 28), dtype='float32')]
         request_data = np.zeros((100, 784), dtype='float32')
         data_as_list = request_data.tolist()
-        _predict_and_assert_response_length(data_as_list, 'application/json')
         _predict_and_assert_response_length(data_as_list, 'text/csv')
-        _predict_and_assert_response_length(request_data, 'application/npz')
+        for array in test_arrays:
+            # JSON and NPY can take multidimensional (n > 2) arrays
+            data_as_list = array.tolist()
+            _predict_and_assert_response_length(data_as_list, 'application/json')
+            _predict_and_assert_response_length(request_data, 'application/npy')
 
 
 def test_chainer_mnist_custom_loop(docker_image, opt_ml, use_gpu):
@@ -45,7 +50,7 @@ def test_chainer_mnist_custom_loop(docker_image, opt_ml, use_gpu):
         data_as_list = request_data.tolist()
         _predict_and_assert_response_length(data_as_list, 'application/json')
         _predict_and_assert_response_length(data_as_list, 'text/csv')
-        _predict_and_assert_response_length(request_data, 'application/npz')
+        _predict_and_assert_response_length(request_data, 'application/npy')
 
 
 def test_chainer_mnist_distributed(docker_image, opt_ml, use_gpu):
@@ -73,7 +78,7 @@ def test_chainer_mnist_distributed(docker_image, opt_ml, use_gpu):
         data_as_list = request_data.tolist()
         _predict_and_assert_response_length(data_as_list, 'application/json')
         _predict_and_assert_response_length(data_as_list, 'text/csv')
-        _predict_and_assert_response_length(request_data, 'application/npz')
+        _predict_and_assert_response_length(request_data, 'application/npy')
 
 
 def _predict_and_assert_response_length(data, content_type):
