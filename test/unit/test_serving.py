@@ -7,7 +7,7 @@ from chainer import Variable
 from container_support.serving import JSON_CONTENT_TYPE, CSV_CONTENT_TYPE, \
     UnsupportedContentTypeError, UnsupportedAcceptTypeError
 
-from chainer_framework import csv_parser, numpy_parser
+from chainer_framework.serialization import csv, npy
 from chainer_framework.serving import model_fn, input_fn, predict_fn, output_fn, transform_fn, NPY_CONTENT_TYPE
 
 
@@ -42,14 +42,14 @@ def test_input_fn_json(np_array):
 
 def test_input_fn_npz(np_array):
 
-    deserialized_np_array = input_fn(numpy_parser.dumps(np_array), NPY_CONTENT_TYPE)
+    deserialized_np_array = input_fn(npy.dumps(np_array), NPY_CONTENT_TYPE)
 
     assert np.array_equal(np_array, deserialized_np_array)
 
 
 def test_input_fn_csv(np_array):
     flattened_np_array = np.ndarray.flatten(np_array)
-    csv_data = csv_parser.dumps(np.ndarray.flatten(np_array))
+    csv_data = csv.dumps(np.ndarray.flatten(np_array))
 
     deserialized_np_array = input_fn(csv_data, CSV_CONTENT_TYPE)
 
@@ -87,7 +87,7 @@ def test_output_fn_npz(np_array):
 
     transformed_data, content_type = output_fn(np_array, NPY_CONTENT_TYPE)
 
-    assert numpy_parser.dumps(np_array) == transformed_data
+    assert npy.dumps(np_array) == transformed_data
     assert NPY_CONTENT_TYPE == content_type
 
 
@@ -106,16 +106,16 @@ def test_transform_fn_json(np_array):
 
 def test_transform_fn_csv(np_array):
 
-    transformed_data, content_type = transform_fn(FakeModel(), csv_parser.dumps(np_array.tolist()), CSV_CONTENT_TYPE, CSV_CONTENT_TYPE)
+    transformed_data, content_type = transform_fn(FakeModel(), csv.dumps(np_array.tolist()), CSV_CONTENT_TYPE, CSV_CONTENT_TYPE)
 
     assert '2.0,2.0\n2.0,2.0\n' == transformed_data
     assert CSV_CONTENT_TYPE == content_type
 
 def test_transform_fn_npz(np_array):
 
-    transformed_data, content_type = transform_fn(FakeModel(), numpy_parser.dumps(np_array), NPY_CONTENT_TYPE,
+    transformed_data, content_type = transform_fn(FakeModel(), npy.dumps(np_array), NPY_CONTENT_TYPE,
                                                   NPY_CONTENT_TYPE)
 
-    transformed_numpy_array = numpy_parser.loads(transformed_data)
+    transformed_numpy_array = npy.loads(transformed_data)
     assert np.array_equal(transformed_numpy_array, fake_predict(np_array))
     assert NPY_CONTENT_TYPE == content_type
