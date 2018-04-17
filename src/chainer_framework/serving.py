@@ -3,13 +3,10 @@ import numpy as np
 
 from chainer_framework.serialization import npy, csv
 from container_support.app import ServingEngine
-from container_support.serving import JSON_CONTENT_TYPE, CSV_CONTENT_TYPE, \
+from container_support.serving import JSON_CONTENT_TYPE, CSV_CONTENT_TYPE, NPY_CONTENT_TYPE, \
     UnsupportedContentTypeError, UnsupportedAcceptTypeError
 
 engine = ServingEngine()
-
-# TODO (amoeller): move this to container support.
-NPY_CONTENT_TYPE = "application/npy"
 
 
 @engine.model_fn()
