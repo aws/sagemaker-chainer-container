@@ -30,7 +30,7 @@ def test_chainer_mnist_single_machine(docker_image, opt_ml, use_gpu):
             # JSON and NPY can take multidimensional (n > 2) arrays
             data_as_list = array.tolist()
             _predict_and_assert_response_length(data_as_list, 'application/json')
-            _predict_and_assert_response_length(request_data, 'application/npy')
+            _predict_and_assert_response_length(request_data, 'application/x-npy')
 
 
 def test_chainer_mnist_custom_loop(docker_image, opt_ml, use_gpu):
@@ -50,7 +50,7 @@ def test_chainer_mnist_custom_loop(docker_image, opt_ml, use_gpu):
         data_as_list = request_data.tolist()
         _predict_and_assert_response_length(data_as_list, 'application/json')
         _predict_and_assert_response_length(data_as_list, 'text/csv')
-        _predict_and_assert_response_length(request_data, 'application/npy')
+        _predict_and_assert_response_length(request_data, 'application/x-npy')
 
 
 def test_chainer_mnist_distributed(docker_image, opt_ml, use_gpu):
@@ -78,7 +78,7 @@ def test_chainer_mnist_distributed(docker_image, opt_ml, use_gpu):
         data_as_list = request_data.tolist()
         _predict_and_assert_response_length(data_as_list, 'application/json')
         _predict_and_assert_response_length(data_as_list, 'text/csv')
-        _predict_and_assert_response_length(request_data, 'application/npy')
+        _predict_and_assert_response_length(request_data, 'application/x-npy')
 
 
 def _predict_and_assert_response_length(data, content_type):
