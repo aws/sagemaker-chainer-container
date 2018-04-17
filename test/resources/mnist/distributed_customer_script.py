@@ -53,7 +53,7 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir, curren
     epochs = hyperparameters.get('epochs', 20)
     frequency = hyperparameters.get('frequency', epochs)
     units = hyperparameters.get('unit', 1000)
-    communicator = hyperparameters.get('communicator', 'naive' if num_gpus == 0 else 'pure_nccl')
+    communicator = 'naive' if num_gpus == 0 else hyperparameters.get('communicator', 'pure_nccl')
 
     comm = chainermn.create_communicator(communicator)
     device = comm.intra_rank if num_gpus > 0 else -1
@@ -74,8 +74,8 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir, curren
         chainer.optimizers.Adam(), comm)
     optimizer.setup(model)
 
-    train_file = np.load(os.path.join(channel_input_dirs['training'], 'train.npz'))
-    test_file = np.load(os.path.join(channel_input_dirs['training'], 'test.npz'))
+    train_file = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))
+    test_file = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))
 
     preprocess_mnist_options = {'withlabel': True,
                                 'ndim': 1,

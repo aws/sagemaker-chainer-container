@@ -1,0 +1,8 @@
+[submodule "sagemaker-python-sdk-staging"]
+	path = sagemaker-python-sdk-staging
+	url = git@github.com:aws/sagemaker-python-sdk-staging.git
+	branch = chainer-estimator
+[submodule "sagemaker-container-support"]
+	path = sagemaker-container-support
+	url = git@github.com:aws/sagemaker-container-support.git
+	branch = mvs-poc
