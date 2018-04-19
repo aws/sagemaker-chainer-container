@@ -54,6 +54,6 @@ def test_chainer_distributed(sagemaker_session, ecr_image, instance_type):
         predictor = chainer.deploy(initial_instance_count=1, instance_type=instance_type)
 
         batch_size = 100
-        data = np.zeros(shape=(batch_size, 1, 28, 28))
+        data = np.zeros(shape=(batch_size, 1, 28, 28), dtype='float32')
         output = predictor.predict(data)
         assert len(output) == batch_size

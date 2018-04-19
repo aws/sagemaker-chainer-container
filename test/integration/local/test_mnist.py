@@ -5,7 +5,7 @@ import numpy as np
 from test.utils import local_mode
 from test.utils.local_mode import request
 
-mnist_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'resources', 'mnist')
+mnist_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..', 'resources', 'mnist')
 data_dir = os.path.join(mnist_path, 'data')
 
 def test_chainer_mnist_single_machine(docker_image, opt_ml, use_gpu):
