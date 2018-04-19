@@ -4,7 +4,7 @@ import pytest
 
 from test.utils import local_mode
 
-resource_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'resources', 'failure')
+resource_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..', 'resources', 'failure')
 
 customer_script = 'failure_script.py'
 

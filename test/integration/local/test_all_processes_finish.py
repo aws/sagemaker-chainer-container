@@ -4,7 +4,7 @@ import pytest
 
 from test.utils import local_mode
 
-resource_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'resources')
+resource_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..', 'resources')
 
 customer_script = 'all_processes_finish_customer_script.py'
 
