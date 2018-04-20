@@ -203,6 +203,8 @@ def start_docker(tmpdir, command):
 
     try:
         subprocess.check_call(command)
+        import time
+        time.sleep(5)
     finally:
         shutdown(compose_file)
 
