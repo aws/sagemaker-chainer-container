@@ -19,12 +19,11 @@ def test_chainer_cifar_single_machine(docker_image, opt_ml, use_gpu):
 
     _assert_files_exist(opt_ml, files)
     assert not local_mode.file_exists(opt_ml, 'output/failure'), 'Failure happened'
-    with local_mode.serve(os.path.join(mnist_path, customer_script), model_dir=None, image_name=docker_image,
+    with local_mode.serve(os.path.join(cifar_path, customer_script), model_dir=None, image_name=docker_image,
                           opt_ml=opt_ml):
-        request_data = np.zeros((3, 32, 32), dtype='float32')
+        request_data = np.zeros((10, 3, 32, 32), dtype='float32')
         data_as_list = request_data.tolist()
         _predict_and_assert_response_length(data_as_list, 'application/json')
-        _predict_and_assert_response_length(data_as_list, 'text/csv')
         _predict_and_assert_response_length(request_data, 'application/x-npy')
 
 

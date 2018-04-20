@@ -1,5 +1,7 @@
 import json
+
 import numpy as np
+import chainer
 
 from chainer_framework.serialization import npy, csv
 from container_support.app import ServingEngine
@@ -56,6 +58,7 @@ def predict_fn(input_data, model):
 
     Returns: a prediction
     """
+
     predicted_data = model(input_data)
     return predicted_data.data
 

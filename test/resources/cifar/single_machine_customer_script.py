@@ -133,8 +133,8 @@ def train(hyperparameters, num_gpus, output_data_dir):
 
     class_labels = 10
     train, test = get_cifar10()
-    train = train[:100]
-    test = test[:100]
+    train = train[:10]
+    test = test[:10]
 
     model = L.Classifier(VGG(class_labels))
 
