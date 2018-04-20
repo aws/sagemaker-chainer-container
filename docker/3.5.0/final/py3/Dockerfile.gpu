@@ -1,4 +1,4 @@
-FROM chainer-base:3.4.0-gpu-py3
+FROM chainer-base:3.5.0-gpu-py3
 
 RUN rm -f /usr/bin/python && ln -s /usr/bin/python3 /usr/bin/python
 
@@ -6,7 +6,7 @@ RUN pip3 install --no-cache \
      numpy==1.14.0 requests==2.18.4 boto3==1.5.2 \
      six==1.11.0 gevent==1.2.2 gunicorn==19.7.1 flask==0.11 Jinja2==2.9 \
      filelock==3.0.4 protobuf==3.5.1 Pillow==5.0.0 cupy==2.4.0 \
-     chainer==3.4.0 chainermn==1.2.0 mpi4py==3.0.0 chainercv==0.8.0 matplotlib==2.2.0
+     chainer==3.5.0 chainermn==1.2.0 mpi4py==3.0.0 chainercv==0.8.0 matplotlib==2.2.0
 
 # Edit matplotlibrc to use "Agg" backend by default to write plots to PNG files (which some Chainer extensions do).
 # https://matplotlib.org/tutorials/introductory/usage.html#what-is-a-backend

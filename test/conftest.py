@@ -21,17 +21,15 @@ logging.getLogger('connectionpool.py').setLevel(logging.INFO)
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
-FRAMEWORK_NAME='chainer'
-
 def pytest_addoption(parser):
     parser.addoption('--build-image', '-D', action="store_true")
     parser.addoption('--build-base-image', '-B', action="store_true")
     parser.addoption('--install-container-support', '-C', action="store_true")
     parser.addoption('--aws-id')
     parser.addoption('--instance-type')
-    parser.addoption('--docker-base-name', default='preprod-chainer')
+    parser.addoption('--docker-base-name', default='chainer')
     parser.addoption('--region', default='us-west-2')
-    parser.addoption('--framework-version', default='3.4.0')
+    parser.addoption('--framework-version', default='3.5.0')
     parser.addoption('--py-version', choices=['2', '3'], default='2')
     parser.addoption('--processor', choices=['gpu','cpu'], default='cpu')
     # If not specified, will default to {framework-version}-{processor}-py{py-version}
