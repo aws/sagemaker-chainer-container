@@ -137,18 +137,20 @@ def train(hyperparameters, num_gpus, output_data_dir):
     # Classifier reports softmax cross entropy loss and accuracy at every
     # iteration, which will be used by the PrintReport extension below.
 
+    # TODO: don't download in train().
     class_labels = 10
     train, test = get_cifar10()
+    train = train[:100]
+    test = test[:100]
 
     model = L.Classifier(VGG(class_labels))
     # Make a specified GPU current
 
     device = comm.intra_rank if num_gpus > 0 else -1
     if device >= 0:
-        chainer.cuda.get_device(device).use()
+        chainer.cuda.get_device_from_id(device).use()
 
-    optimizer = chainer.optimizers.MomentumSGD(learning_rate)
-    optimizer = chainermn.create_multi_node_optimizer(optimizer, comm)
+    optimizer = chainermn.create_multi_node_optimizer(chainer.optimizers.MomentumSGD(learning_rate), comm)
     optimizer.setup(model)
     optimizer.add_hook(chainer.optimizer.WeightDecay(5e-4))
 
@@ -179,22 +181,22 @@ def train(hyperparameters, num_gpus, output_data_dir):
 
     # Write a log of evaluation statistics for each epoch
     trainer.extend(extensions.LogReport())
+    if comm.rank == 0:
+        if extensions.PlotReport.available():
+            trainer.extend(
+                extensions.PlotReport(['main/loss', 'validation/main/loss'],
+                                      'epoch', file_name='loss.png'))
+            trainer.extend(
+                extensions.PlotReport(
+                    ['main/accuracy', 'validation/main/accuracy'],
+                    'epoch', file_name='accuracy.png'))
 
-    if extensions.PlotReport.available():
-        trainer.extend(
-            extensions.PlotReport(['main/loss', 'validation/main/loss'],
-                                  'epoch', file_name='loss.png'))
-        trainer.extend(
-            extensions.PlotReport(
-                ['main/accuracy', 'validation/main/accuracy'],
-                'epoch', file_name='accuracy.png'))
+        trainer.extend(extensions.dump_graph('main/loss'))
 
-    trainer.extend(extensions.dump_graph('main/loss'))
-    trainer.extend(extensions.LogReport())
-    trainer.extend(extensions.PrintReport(
-        ['epoch', 'main/loss', 'validation/main/loss',
-         'main/accuracy', 'validation/main/accuracy', 'elapsed_time']))
-    trainer.extend(extensions.ProgressBar())
+        trainer.extend(extensions.PrintReport(
+            ['epoch', 'main/loss', 'validation/main/loss',
+             'main/accuracy', 'validation/main/accuracy', 'elapsed_time']))
+        trainer.extend(extensions.ProgressBar())
 
     # Run the training
     trainer.run()

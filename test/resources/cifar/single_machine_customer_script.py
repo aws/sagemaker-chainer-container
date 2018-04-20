@@ -120,8 +120,7 @@ class VGG(chainer.Chain):
 
 
 def train(hyperparameters, num_gpus, output_data_dir):
-
-    batch_size = hyperparameters.get('batch_size', 256)
+    batch_size = hyperparameters.get('batch_size', 64)
     epochs = hyperparameters.get('epochs', 300)
     learning_rate = hyperparameters.get('learning_rate', 0.05)
 
@@ -134,14 +133,15 @@ def train(hyperparameters, num_gpus, output_data_dir):
 
     class_labels = 10
     train, test = get_cifar10()
+    train = train[:100]
+    test = test[:100]
 
-    print('------1')
     model = L.Classifier(VGG(class_labels))
 
     # Make a specified GPU current
     if num_gpus > 0:
         chainer.cuda.get_device_from_id(0).use()
-    print('------2')
+
     optimizer = chainer.optimizers.MomentumSGD(learning_rate)
     optimizer.setup(model)
     optimizer.add_hook(chainer.optimizer.WeightDecay(5e-4))
@@ -149,8 +149,7 @@ def train(hyperparameters, num_gpus, output_data_dir):
     train_iter = chainer.iterators.SerialIterator(train, batch_size)
     test_iter = chainer.iterators.SerialIterator(test, batch_size,
                                                  repeat=False, shuffle=False)
-    stop_trigger = (epochs, 'epoch')
-    print('------3')
+
     # Set up a trainer
     device = 0 if num_gpus > 0 else -1  # -1 indicates CPU, 0 indicates first GPU device.
     if num_gpus > 0:
@@ -163,13 +162,14 @@ def train(hyperparameters, num_gpus, output_data_dir):
         )
     else:
         updater = training.updater.StandardUpdater(train_iter, optimizer, device=device)
+
+    stop_trigger = (epochs, 'epoch')
     trainer = training.Trainer(updater, stop_trigger, out=output_data_dir)
     # Evaluate the model with the test dataset for each epoch
-    trainer.extend(extensions.Evaluator(test_iter, model, device=0))
+    trainer.extend(extensions.Evaluator(test_iter, model, device=device))
 
     # Reduce the learning rate by half every 25 epochs.
-    trainer.extend(extensions.ExponentialShift('lr', 0.5),
-                   trigger=(25, 'epoch'))
+    trainer.extend(extensions.ExponentialShift('lr', 0.5), trigger=(25, 'epoch'))
 
     # Dump a computational graph from 'loss' variable at the first iteration
     # The "main" refers to the target link of the "main" optimizer.
@@ -180,6 +180,15 @@ def train(hyperparameters, num_gpus, output_data_dir):
 
     # Write a log of evaluation statistics for each epoch
     trainer.extend(extensions.LogReport())
+
+    if extensions.PlotReport.available():
+        trainer.extend(
+            extensions.PlotReport(['main/loss', 'validation/main/loss'],
+                                  'epoch', file_name='loss.png'))
+        trainer.extend(
+            extensions.PlotReport(
+                ['main/accuracy', 'validation/main/accuracy'],
+                'epoch', file_name='accuracy.png'))
 
     # Print selected entries of the log to stdout
     # Here "main" refers to the target link of the "main" optimizer again, and
@@ -194,9 +203,9 @@ def train(hyperparameters, num_gpus, output_data_dir):
     trainer.extend(extensions.ProgressBar())
 
     # Run the training
-    print("---6")
+
     trainer.run()
-    print("---7")
+
     return model
 
 
@@ -206,5 +215,5 @@ def model_fn(model_dir):
     return model.predictor
 
 if __name__=="__main__":
-    model = train({'epochs':1}, 8, 'out')
+    model = train({'epochs': 1}, 8, 'out')
     print(model)

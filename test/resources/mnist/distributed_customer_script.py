@@ -48,7 +48,7 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb
         return images
 
 
-def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir, current_host):
+def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
     batch_size = hyperparameters.get('batch_size', 200)
     epochs = hyperparameters.get('epochs', 20)
     frequency = hyperparameters.get('frequency', epochs)

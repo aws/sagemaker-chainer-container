@@ -95,6 +95,7 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
     else:
         updater = training.updater.StandardUpdater(train_iter, optimizer, device=device)
 
+    # Write output files to output_data_dir. These are zipped and uploaded to S3 output path as output.tar.gz.
     trainer = training.Trainer(updater, (epochs, 'epoch'), out=output_data_dir)
 
     # Evaluate the model with the test dataset for each epoch
