@@ -115,7 +115,7 @@ def docker_registry(aws_id, region):
 
 @pytest.fixture(scope='session')
 def ecr_image(docker_registry, docker_base_name, tag):
-    return '{}/{}:{}'.format(docker_registry, docker_base_name, tag)
+    return '{}/preprod-{}:{}'.format(docker_registry, docker_base_name, tag)
 
 
 @pytest.fixture(scope='session')
