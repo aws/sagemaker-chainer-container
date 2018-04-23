@@ -203,8 +203,6 @@ def start_docker(tmpdir, command):
 
     try:
         subprocess.check_call(command)
-        import time
-        time.sleep(5)
     finally:
         shutdown(compose_file)
 
@@ -606,3 +604,12 @@ def request(data, request_type=JSON_CONTENT_TYPE):
                                       headers={'Content-type': request_type,
                                                'Accept': request_type}).content
     return serializer.loads(serialized_output)
+
+
+def files_exist(opt_ml, files):
+    for f in files:
+        assert file_exists(opt_ml, f), 'file {} was not created'.format(f)
+
+def predict_and_assert_response_length(data, content_type):
+    predict_response = request(data, request_type=content_type)
+    assert len(predict_response) == len(data)
