@@ -11,7 +11,7 @@
 #  express or implied. See the License for the specific language governing 
 #  permissions and limitations under the License.
 
-from test.integration.sagemaker.estimator import ChainerTestEstimator
+from estimator import ChainerTestEstimator
 from sagemaker.utils import sagemaker_timestamp
 from timeout import timeout, timeout_and_delete_endpoint
 import numpy as np
