@@ -2,6 +2,8 @@ from __future__ import print_function
 
 import os
 
+import numpy as np
+
 import chainer
 import chainer.functions as F
 import chainer.links as L
@@ -9,7 +11,6 @@ import chainermn
 from chainer import training
 from chainer import serializers
 from chainer.training import extensions
-from chainer.datasets import get_cifar10
 
 
 class Block(chainer.Chain):
@@ -121,12 +122,20 @@ class VGG(chainer.Chain):
         return self.fc2(h)
 
 
-def train(hyperparameters, num_gpus, output_data_dir):
+def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
+    train_data = np.load(os.path.join(channel_input_dirs['train'], 'cifar10-train-data.npz'))['arr_0']
+    train_labels = np.load(os.path.join(channel_input_dirs['train'], 'cifar10-train-labels.npz'))['arr_0']
 
-    batch_size = hyperparameters.get('batch_size', 64)
+    test_data = np.load(os.path.join(channel_input_dirs['test'], 'cifar10-test-data.npz'))['arr_0']
+    test_labels = np.load(os.path.join(channel_input_dirs['test'], 'cifar10-test-labels.npz'))['arr_0']
+
+    train = chainer.datasets.TupleDataset(train_data, train_labels)
+    test = chainer.datasets.TupleDataset(test_data, test_labels)
+
+    batch_size = hyperparameters.get('batch_size', 256)
     epochs = hyperparameters.get('epochs', 300)
     learning_rate = hyperparameters.get('learning_rate', 0.05)
-    communicator = hyperparameters.get('communicator', 'pure_nccl')
+    communicator = hyperparameters.get('communicator', 'pure_nccl') if num_gpus > 0 else 'naive'
 
     comm = chainermn.create_communicator(communicator)
 
@@ -137,13 +146,7 @@ def train(hyperparameters, num_gpus, output_data_dir):
     # Classifier reports softmax cross entropy loss and accuracy at every
     # iteration, which will be used by the PrintReport extension below.
 
-    # TODO: don't download in train().
-    class_labels = 10
-    train, test = get_cifar10()
-    train = train[:100]
-    test = test[:100]
-
-    model = L.Classifier(VGG(class_labels))
+    model = L.Classifier(VGG(10))
     # Make a specified GPU current
 
     device = comm.intra_rank if num_gpus > 0 else -1
@@ -155,8 +158,7 @@ def train(hyperparameters, num_gpus, output_data_dir):
     optimizer.add_hook(chainer.optimizer.WeightDecay(5e-4))
 
     train_iter = chainer.iterators.SerialIterator(train, batch_size)
-    test_iter = chainer.iterators.SerialIterator(test, batch_size,
-                                                 repeat=False, shuffle=False)
+    test_iter = chainer.iterators.SerialIterator(test, batch_size,repeat=False, shuffle=False)
 
     # Set up a trainer
     updater = training.StandardUpdater(train_iter, optimizer, device=device)
@@ -204,6 +206,7 @@ def train(hyperparameters, num_gpus, output_data_dir):
 
 
 def model_fn(model_dir):
+    chainer.config.train = False
     model = L.Classifier(VGG(10))
     serializers.load_npz(os.path.join(model_dir, 'model.npz'), model)
     return model.predictor

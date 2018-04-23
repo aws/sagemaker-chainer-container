@@ -2,6 +2,8 @@ from __future__ import print_function
 
 import os
 
+import numpy as np
+
 import chainer
 import chainer.functions as F
 import chainer.links as L
@@ -119,7 +121,16 @@ class VGG(chainer.Chain):
         return self.fc2(h)
 
 
-def train(hyperparameters, num_gpus, output_data_dir):
+def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
+    train_data = np.load(os.path.join(channel_input_dirs['train'], 'cifar10-train-data.npz'))['arr_0']
+    train_labels = np.load(os.path.join(channel_input_dirs['train'], 'cifar10-train-labels.npz'))['arr_0']
+
+    test_data = np.load(os.path.join(channel_input_dirs['test'], 'cifar10-test-data.npz'))['arr_0']
+    test_labels = np.load(os.path.join(channel_input_dirs['test'], 'cifar10-test-labels.npz'))['arr_0']
+
+    train = chainer.datasets.TupleDataset(train_data, train_labels)
+    test = chainer.datasets.TupleDataset(test_data, test_labels)
+
     batch_size = hyperparameters.get('batch_size', 64)
     epochs = hyperparameters.get('epochs', 300)
     learning_rate = hyperparameters.get('learning_rate', 0.05)
@@ -131,12 +142,7 @@ def train(hyperparameters, num_gpus, output_data_dir):
     # Classifier reports softmax cross entropy loss and accuracy at every
     # iteration, which will be used by the PrintReport extension below.
 
-    class_labels = 10
-    train, test = get_cifar10()
-    train = train[:10]
-    test = test[:10]
-
-    model = L.Classifier(VGG(class_labels))
+    model = L.Classifier(VGG(10))
 
     # Make a specified GPU current
     if num_gpus > 0:
@@ -147,8 +153,7 @@ def train(hyperparameters, num_gpus, output_data_dir):
     optimizer.add_hook(chainer.optimizer.WeightDecay(5e-4))
 
     train_iter = chainer.iterators.SerialIterator(train, batch_size)
-    test_iter = chainer.iterators.SerialIterator(test, batch_size,
-                                                 repeat=False, shuffle=False)
+    test_iter = chainer.iterators.SerialIterator(test, batch_size, repeat=False, shuffle=False)
 
     # Set up a trainer
     device = 0 if num_gpus > 0 else -1  # -1 indicates CPU, 0 indicates first GPU device.

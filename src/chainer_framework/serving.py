@@ -58,6 +58,9 @@ def predict_fn(input_data, model):
 
     Returns: a prediction
     """
+    chainer.config.train = False
+    if chainer.cuda.available:
+        model.to_gpu()
 
     predicted_data = model(input_data)
     return predicted_data.data
