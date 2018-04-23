@@ -218,7 +218,3 @@ def model_fn(model_dir):
     model = L.Classifier(VGG(10))
     serializers.load_npz(os.path.join(model_dir, 'model.npz'), model)
     return model.predictor
-
-if __name__=="__main__":
-    model = train({'epochs': 1}, 8, 'out')
-    print(model)
