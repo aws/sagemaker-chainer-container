@@ -9,8 +9,7 @@ def train(hyperparameters, num_gpus, current_host, output_data_dir, hosts):
     communicator = hyperparameters.get('communicator', 'naive' if num_gpus == 0 else 'pure_nccl')
     comm = chainermn.create_communicator(communicator)
 
-    assert comm.intra_size > 1
-    assert len(hosts) > 1
+    print('process {} on host {} of {} starting'.format(comm.intra_rank, current_host, len(hosts)))
 
     if comm.intra_rank == 1 and current_host != 'algo-1':
         os.makedirs(output_data_dir)
