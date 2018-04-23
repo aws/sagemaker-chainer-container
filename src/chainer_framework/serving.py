@@ -3,6 +3,11 @@ import json
 import numpy as np
 import chainer
 
+try:
+    import cupy as cp
+except ImportError:
+    None
+
 from chainer_framework.serialization import npy, csv
 from container_support.app import ServingEngine
 from container_support.serving import JSON_CONTENT_TYPE, CSV_CONTENT_TYPE, NPY_CONTENT_TYPE, \
@@ -60,6 +65,7 @@ def predict_fn(input_data, model):
     """
     chainer.config.train = False
     if chainer.cuda.available:
+        input_data = cp.array(input_data)
         model.to_gpu()
 
     predicted_data = model(input_data)

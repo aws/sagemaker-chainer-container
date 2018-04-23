@@ -15,7 +15,7 @@ def train(hyperparameters, num_gpus, current_host, output_data_dir, hosts):
     if comm.intra_rank == 1 and current_host != 'algo-1':
         os.makedirs(output_data_dir)
         # this sleep time must be longer than the polling interval to check if mpi is finished.
-        time.sleep(6)
+        time.sleep(7)
         open(os.path.join(output_data_dir, 'process_could_complete'), 'a').close()
 
     print('process {} on host {} exiting'.format(comm.intra_rank, current_host))
