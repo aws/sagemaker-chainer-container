@@ -10,115 +10,76 @@ import chainer.links as L
 from chainer import training
 from chainer import serializers
 from chainer.training import extensions
-from chainer.datasets import get_cifar10
 
-class Block(chainer.Chain):
 
-    """A convolution, batch norm, ReLU block.
-    A block in a feedforward network that performs a
-    convolution followed by batch normalization followed
-    by a ReLU activation.
-    For the convolution operation, a square filter size is used.
-    Args:
-        out_channels (int): The number of output channels.
-        ksize (int): The size of the filter is ksize x ksize.
-        pad (int): The padding to use for the convolution.
-    """
+class BottleNeck(chainer.Chain):
 
-    def __init__(self, out_channels, ksize, pad=1):
+    def __init__(self, n_in, n_mid, n_out, stride=1, use_conv=False):
+        w = chainer.initializers.HeNormal()
+        super(BottleNeck, self).__init__()
+        with self.init_scope():
+            self.conv1 = L.Convolution2D(n_in, n_mid, 1, stride, 0, True, w)
+            self.bn1 = L.BatchNormalization(n_mid)
+            self.conv2 = L.Convolution2D(n_mid, n_mid, 3, 1, 1, True, w)
+            self.bn2 = L.BatchNormalization(n_mid)
+            self.conv3 = L.Convolution2D(n_mid, n_out, 1, 1, 0, True, w)
+            self.bn3 = L.BatchNormalization(n_out)
+            if use_conv:
+                self.conv4 = L.Convolution2D(
+                    n_in, n_out, 1, stride, 0, True, w)
+                self.bn4 = L.BatchNormalization(n_out)
+        self.use_conv = use_conv
+
+    def __call__(self, x):
+        h = F.relu(self.bn1(self.conv1(x)))
+        h = F.relu(self.bn2(self.conv2(h)))
+        h = self.bn3(self.conv3(h))
+        return h + self.bn4(self.conv4(x)) if self.use_conv else h + x
+
+
+class Block(chainer.ChainList):
+
+    def __init__(self, n_in, n_mid, n_out, n_bottlenecks, stride=2):
         super(Block, self).__init__()
-        with self.init_scope():
-            self.conv = L.Convolution2D(None, out_channels, ksize, pad=pad,
-                                        nobias=True)
-            self.bn = L.BatchNormalization(out_channels)
+        self.add_link(BottleNeck(n_in, n_mid, n_out, stride, True))
+        for _ in range(n_bottlenecks - 1):
+            self.add_link(BottleNeck(n_out, n_mid, n_out))
 
     def __call__(self, x):
-        h = self.conv(x)
-        h = self.bn(h)
-        return F.relu(h)
+        for f in self:
+            x = f(x)
+        return x
 
 
-class VGG(chainer.Chain):
+class ResNet(chainer.Chain):
 
-    """A VGG-style network for very small images.
-    This model is based on the VGG-style model from
-    http://torch.ch/blog/2015/07/30/cifar.html
-    which is based on the network architecture from the paper:
-    https://arxiv.org/pdf/1409.1556v6.pdf
-    This model is intended to be used with either RGB or greyscale input
-    images that are of size 32x32 pixels, such as those in the CIFAR10
-    and CIFAR100 datasets.
-    On CIFAR10, it achieves approximately 89% accuracy on the test set with
-    no data augmentation.
-    On CIFAR100, it achieves approximately 63% accuracy on the test set with
-    no data augmentation.
-    Args:
-        class_labels (int): The number of class labels.
-    """
-
-    def __init__(self, class_labels=10):
-        super(VGG, self).__init__()
+    def __init__(self, n_class=10, n_blocks=[3, 4, 6, 3]):
+        super(ResNet, self).__init__()
+        w = chainer.initializers.HeNormal()
         with self.init_scope():
-            self.block1_1 = Block(64, 3)
-            self.block1_2 = Block(64, 3)
-            self.block2_1 = Block(128, 3)
-            self.block2_2 = Block(128, 3)
-            self.block3_1 = Block(256, 3)
-            self.block3_2 = Block(256, 3)
-            self.block3_3 = Block(256, 3)
-            self.block4_1 = Block(512, 3)
-            self.block4_2 = Block(512, 3)
-            self.block4_3 = Block(512, 3)
-            self.block5_1 = Block(512, 3)
-            self.block5_2 = Block(512, 3)
-            self.block5_3 = Block(512, 3)
-            self.fc1 = L.Linear(None, 512, nobias=True)
-            self.bn_fc1 = L.BatchNormalization(512)
-            self.fc2 = L.Linear(None, class_labels, nobias=True)
+            self.conv1 = L.Convolution2D(None, 64, 3, 1, 0, True, w)
+            self.bn2 = L.BatchNormalization(64)
+            self.res3 = Block(64, 64, 256, n_blocks[0], 1)
+            self.res4 = Block(256, 128, 512, n_blocks[1], 2)
+            self.res5 = Block(512, 256, 1024, n_blocks[2], 2)
+            self.res6 = Block(1024, 512, 2048, n_blocks[3], 2)
+            self.fc7 = L.Linear(None, n_class)
 
     def __call__(self, x):
-        # 64 channel blocks:
-        h = self.block1_1(x)
-        h = F.dropout(h, ratio=0.3)
-        h = self.block1_2(h)
-        h = F.max_pooling_2d(h, ksize=2, stride=2)
+        h = F.relu(self.bn2(self.conv1(x)))
+        h = self.res3(h)
+        h = self.res4(h)
+        h = self.res5(h)
+        h = self.res6(h)
+        h = F.average_pooling_2d(h, h.shape[2:])
+        h = self.fc7(h)
+        return h
 
-        # 128 channel blocks:
-        h = self.block2_1(h)
-        h = F.dropout(h, ratio=0.4)
-        h = self.block2_2(h)
-        h = F.max_pooling_2d(h, ksize=2, stride=2)
 
-        # 256 channel blocks:
-        h = self.block3_1(h)
-        h = F.dropout(h, ratio=0.4)
-        h = self.block3_2(h)
-        h = F.dropout(h, ratio=0.4)
-        h = self.block3_3(h)
-        h = F.max_pooling_2d(h, ksize=2, stride=2)
+class ResNet50(ResNet):
 
-        # 512 channel blocks:
-        h = self.block4_1(h)
-        h = F.dropout(h, ratio=0.4)
-        h = self.block4_2(h)
-        h = F.dropout(h, ratio=0.4)
-        h = self.block4_3(h)
-        h = F.max_pooling_2d(h, ksize=2, stride=2)
-
-        # 512 channel blocks:
-        h = self.block5_1(h)
-        h = F.dropout(h, ratio=0.4)
-        h = self.block5_2(h)
-        h = F.dropout(h, ratio=0.4)
-        h = self.block5_3(h)
-        h = F.max_pooling_2d(h, ksize=2, stride=2)
-
-        h = F.dropout(h, ratio=0.5)
-        h = self.fc1(h)
-        h = self.bn_fc1(h)
-        h = F.relu(h)
-        h = F.dropout(h, ratio=0.5)
-        return self.fc2(h)
+    def __init__(self, n_class=10):
+        super(ResNet50, self).__init__(n_class, [3, 4, 6, 3])
 
 
 def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
@@ -141,8 +102,7 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
     # Set up a neural network to train.
     # Classifier reports softmax cross entropy loss and accuracy at every
     # iteration, which will be used by the PrintReport extension below.
-
-    model = L.Classifier(VGG(10))
+    model = L.Classifier(ResNet50(10))
 
     # Make a specified GPU current
     if num_gpus > 0:
@@ -215,6 +175,6 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
 
 
 def model_fn(model_dir):
-    model = L.Classifier(VGG(10))
+    model = L.Classifier(ResNet50(10))
     serializers.load_npz(os.path.join(model_dir, 'model.npz'), model)
     return model.predictor
