@@ -3,6 +3,7 @@ import json
 import numpy as np
 import chainer
 
+# Try to import cupy (for GPU inference)
 try:
     import cupy as cp
 except ImportError:
