@@ -97,12 +97,13 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
     batch_size = hyperparameters.get('batch_size', 256)
     epochs = hyperparameters.get('epochs', 300)
     learning_rate = hyperparameters.get('learning_rate', 0.05)
-    communicator = hyperparameters.get('communicator', 'pure_nccl') if num_gpus > 0 else 'naive'
+    communicator = hyperparameters.get('communicator', 'hierarchical') if num_gpus > 0 else 'naive'
 
     comm = chainermn.create_communicator(communicator)
 
     print('# Minibatch-size: {}'.format(batch_size))
     print('# epoch: {}'.format(epochs))
+    print('# communicator: {}'.format(comm))
 
     # Set up a neural network to train.
     # Classifier reports softmax cross entropy loss and accuracy at every

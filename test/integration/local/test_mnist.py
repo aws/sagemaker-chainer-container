@@ -16,7 +16,7 @@ def test_chainer_mnist_single_machine(docker_image, opt_ml, use_gpu):
 
     files = ['model/model.npz', 'output/success', 'output/data/accuracy.png',
                                'output/data/cg.dot', 'output/data/log', 'output/data/loss.png']
-    local_mode.files_exist(opt_ml, files)
+    test_utils.files_exist(opt_ml, files)
     assert not local_mode.file_exists(opt_ml, 'output/failure'), 'Failure happened'
     with local_mode.serve(os.path.join(mnist_path, customer_script), model_dir=None, image_name=docker_image,
                           opt_ml=opt_ml, use_gpu=use_gpu):
@@ -40,7 +40,7 @@ def test_chainer_mnist_custom_loop(docker_image, opt_ml, use_gpu):
                      source_dir=mnist_path, use_gpu=use_gpu)
 
     files = ['model/model.npz', 'output/success']
-    local_mode.files_exist(opt_ml, files)
+    test_utils.files_exist(opt_ml, files)
     assert not local_mode.file_exists(opt_ml, 'output/failure'), 'Failure happened'
 
     with local_mode.serve(os.path.join(mnist_path, customer_script), model_dir=None, image_name=docker_image,
@@ -68,7 +68,7 @@ def test_chainer_mnist_distributed(docker_image, opt_ml, use_gpu):
     files = ['model/model.npz', 'output/success', 'output/data/algo-1/accuracy.png',
              'output/data/algo-1/cg.dot', 'output/data/algo-1/log', 'output/data/algo-1/loss.png']
 
-    local_mode.files_exist(opt_ml, files)
+    test_utils.files_exist(opt_ml, files)
     assert not local_mode.file_exists(opt_ml, 'output/failure'), 'Failure happened'
 
     with local_mode.serve(os.path.join(mnist_path, customer_script), model_dir=None, image_name=docker_image,
