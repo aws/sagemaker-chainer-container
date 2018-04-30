@@ -1,5 +1,13 @@
 import json
+
 import numpy as np
+import chainer
+
+# Try to import cupy (for GPU inference)
+try:
+    import cupy as cp
+except ImportError:
+    None
 
 from chainer_framework.serialization import npy, csv
 from container_support.app import ServingEngine
@@ -56,6 +64,11 @@ def predict_fn(input_data, model):
 
     Returns: a prediction
     """
+    chainer.config.train = False
+    if chainer.cuda.available:
+        input_data = cp.array(input_data)
+        model.to_gpu()
+
     predicted_data = model(input_data)
     return predicted_data.data
 
