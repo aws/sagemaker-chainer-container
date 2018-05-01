@@ -2,7 +2,7 @@ import os
 
 from test.utils import local_mode
 
-resource_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..', 'resources', 'completion')
+resource_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..', 'resources', 'failure')
 
 
 def test_all_processes_finish_with_mpi(docker_image, opt_ml, use_gpu):
