@@ -1,128 +1,138 @@
-from __future__ import print_function
-
+#!/usr/bin/env python
+import argparse
+import datetime
+import json
 import os
 
-import numpy as np
 import chainer
-import chainer.functions as F
-import chainer.links as L
-import chainermn
-from chainer import serializers, training
+from chainer import training
 from chainer.training import extensions
-from chainer.datasets import tuple_dataset
+
+import nets
+from nlp_utils import convert_seq
+import text_datasets
 
 
-class MLP(chainer.Chain):
+def main():
+    current_datetime = '{}'.format(datetime.datetime.today())
+    parser = argparse.ArgumentParser(
+        description='Chainer example: Text Classification')
+    parser.add_argument('--batchsize', '-b', type=int, default=64,
+                        help='Number of images in each mini-batch')
+    parser.add_argument('--epoch', '-e', type=int, default=30,
+                        help='Number of sweeps over the dataset to train')
+    parser.add_argument('--gpu', '-g', type=int, default=-1,
+                        help='GPU ID (negative value indicates CPU)')
+    parser.add_argument('--out', '-o', default='result',
+                        help='Directory to output the result')
+    parser.add_argument('--unit', '-u', type=int, default=300,
+                        help='Number of units')
+    parser.add_argument('--layer', '-l', type=int, default=1,
+                        help='Number of layers of RNN or MLP following CNN')
+    parser.add_argument('--dropout', '-d', type=float, default=0.4,
+                        help='Dropout rate')
+    parser.add_argument('--dataset', '-data', default='imdb.binary',
+                        choices=['dbpedia', 'imdb.binary', 'imdb.fine',
+                                 'TREC', 'stsa.binary', 'stsa.fine',
+                                 'custrev', 'mpqa', 'rt-polarity', 'subj'],
+                        help='Name of dataset.')
+    parser.add_argument('--model', '-model', default='cnn',
+                        choices=['cnn', 'rnn', 'bow'],
+                        help='Name of encoder model type.')
+    parser.add_argument('--char-based', action='store_true')
 
-    def __init__(self, n_units, n_out):
-        super(MLP, self).__init__()
-        with self.init_scope():
-            # the size of the inputs to each layer will be inferred
-            self.l1 = L.Linear(None, n_units)  # n_in -> n_units
-            self.l2 = L.Linear(None, n_units)  # n_units -> n_units
-            self.l3 = L.Linear(None, n_out)  # n_units -> n_out
+    args = parser.parse_args()
+    print(json.dumps(args.__dict__, indent=2))
 
-    def __call__(self, x):
-        h1 = F.relu(self.l1(x))
-        h2 = F.relu(self.l2(h1))
-        return self.l3(h2)
+    # Load a dataset
+    if args.dataset == 'dbpedia':
+        train, test, vocab = text_datasets.get_dbpedia(
+            char_based=args.char_based)
+    elif args.dataset.startswith('imdb.'):
+        train, test, vocab = text_datasets.get_imdb(
+            fine_grained=args.dataset.endswith('.fine'),
+            char_based=args.char_based)
+    elif args.dataset in ['TREC', 'stsa.binary', 'stsa.fine',
+                          'custrev', 'mpqa', 'rt-polarity', 'subj']:
+        train, test, vocab = text_datasets.get_other_text_dataset(
+            args.dataset, char_based=args.char_based)
 
+    print('# train data: {}'.format(len(train)))
+    print('# test  data: {}'.format(len(test)))
+    print('# vocab: {}'.format(len(vocab)))
+    n_class = len(set([int(d[1]) for d in train]))
+    print('# class: {}'.format(n_class))
 
-def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb_format):
-    images = raw['x']
-    if ndim == 2:
-        images = images.reshape(-1, 28, 28)
-    elif ndim == 3:
-        images = images.reshape(-1, 1, 28, 28)
-        if rgb_format:
-            images = np.broadcast_to(images, (len(images), 3) + images.shape[2:])
-    elif ndim != 1:
-        raise ValueError('invalid ndim for MNIST dataset')
-    images = images.astype(image_dtype)
-    images *= scale / 255.
-
-    if withlabel:
-        labels = raw['y'].astype(label_dtype)
-        return tuple_dataset.TupleDataset(images, labels)
-    else:
-        return images
-
-
-def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
-    batch_size = hyperparameters.get('batch_size', 200)
-    epochs = hyperparameters.get('epochs', 20)
-    frequency = hyperparameters.get('frequency', epochs)
-    units = hyperparameters.get('unit', 1000)
-    communicator = 'naive' if num_gpus == 0 else hyperparameters.get('communicator', 'pure_nccl')
-
-    comm = chainermn.create_communicator(communicator)
-    device = comm.intra_rank if num_gpus > 0 else -1
-
-    print('==========================================')
-    print('Using {} communicator'.format(comm))
-    print('Num unit: {}'.format(units))
-    print('Num Minibatch-size: {}'.format(batch_size))
-    print('Num epoch: {}'.format(epochs))
-    print('==========================================')
-
-    model = L.Classifier(MLP(units, 10))
-    if device >= 0:
-        chainer.cuda.get_device(device).use()
-
-    # Create a multi node optimizer from a standard Chainer optimizer.
-    optimizer = chainermn.create_multi_node_optimizer(
-        chainer.optimizers.Adam(), comm)
-    optimizer.setup(model)
-
-    train_file = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))
-    test_file = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))
-
-    preprocess_mnist_options = {'withlabel': True,
-                                'ndim': 1,
-                                'scale': 1.,
-                                'image_dtype': np.float32,
-                                'label_dtype': np.int32,
-                                'rgb_format': False}
-
-    train = _preprocess_mnist(train_file, **preprocess_mnist_options)
-    test = _preprocess_mnist(test_file, **preprocess_mnist_options)
-
-    train_iter = chainer.iterators.SerialIterator(train, batch_size)
-    test_iter = chainer.iterators.SerialIterator(test, batch_size,
+    train_iter = chainer.iterators.SerialIterator(train, args.batchsize)
+    test_iter = chainer.iterators.SerialIterator(test, args.batchsize,
                                                  repeat=False, shuffle=False)
 
-    updater = training.StandardUpdater(train_iter, optimizer, device=device)
-    trainer = training.Trainer(updater, (epochs, 'epoch'), out=output_data_dir)
+    # Setup a model
+    if args.model == 'rnn':
+        Encoder = nets.RNNEncoder
+    elif args.model == 'cnn':
+        Encoder = nets.CNNEncoder
+    elif args.model == 'bow':
+        Encoder = nets.BOWMLPEncoder
+    encoder = Encoder(n_layers=args.layer, n_vocab=len(vocab),
+                      n_units=args.unit, dropout=args.dropout)
+    model = nets.TextClassifier(encoder, n_class)
+    if args.gpu >= 0:
+        # Make a specified GPU current
+        chainer.backends.cuda.get_device_from_id(args.gpu).use()
+        model.to_gpu()  # Copy the model to the GPU
 
-    # Create a multi node evaluator from a standard Chainer evaluator.
-    evaluator = extensions.Evaluator(test_iter, model, device=device)
-    evaluator = chainermn.create_multi_node_evaluator(evaluator, comm)
-    trainer.extend(evaluator)
+    # Setup an optimizer
+    optimizer = chainer.optimizers.Adam()
+    optimizer.setup(model)
+    optimizer.add_hook(chainer.optimizer.WeightDecay(1e-4))
 
-    # Some display and output extensions are necessary only for one worker.
-    # (Otherwise, there would just be repeated outputs.)
-    if comm.rank == 0:
-        if extensions.PlotReport.available():
-            trainer.extend(
-                extensions.PlotReport(['main/loss', 'validation/main/loss'],
-                                      'epoch', file_name='loss.png'))
-            trainer.extend(
-                extensions.PlotReport(
-                    ['main/accuracy', 'validation/main/accuracy'],
-                    'epoch', file_name='accuracy.png'))
-        trainer.extend(extensions.snapshot(), trigger=(frequency, 'epoch'))
-        trainer.extend(extensions.dump_graph('main/loss'))
-        trainer.extend(extensions.LogReport())
-        trainer.extend(extensions.PrintReport(
-            ['epoch', 'main/loss', 'validation/main/loss',
-             'main/accuracy', 'validation/main/accuracy', 'elapsed_time']))
-        trainer.extend(extensions.ProgressBar())
+    # Set up a trainer
+    updater = training.updaters.StandardUpdater(
+        train_iter, optimizer,
+        converter=convert_seq, device=args.gpu)
+    trainer = training.Trainer(updater, (args.epoch, 'epoch'), out=args.out)
 
+    # Evaluate the model with the test dataset for each epoch
+    trainer.extend(extensions.Evaluator(
+        test_iter, model,
+        converter=convert_seq, device=args.gpu))
+
+    # Take a best snapshot
+    record_trigger = training.triggers.MaxValueTrigger(
+        'validation/main/accuracy', (1, 'epoch'))
+    trainer.extend(extensions.snapshot_object(
+        model, 'best_model.npz'),
+        trigger=record_trigger)
+
+    # Write a log of evaluation statistics for each epoch
+    trainer.extend(extensions.LogReport())
+    trainer.extend(extensions.PrintReport(
+        ['epoch', 'main/loss', 'validation/main/loss',
+         'main/accuracy', 'validation/main/accuracy', 'elapsed_time']))
+
+    # Print a progress bar to stdout
+    trainer.extend(extensions.ProgressBar())
+
+    # Save vocabulary and model's setting
+    if not os.path.isdir(args.out):
+        os.mkdir(args.out)
+    current = os.path.dirname(os.path.abspath(__file__))
+    vocab_path = os.path.join(current, args.out, 'vocab.json')
+    with open(vocab_path, 'w') as f:
+        json.dump(vocab, f)
+    model_path = os.path.join(current, args.out, 'best_model.npz')
+    model_setup = args.__dict__
+    model_setup['vocab_path'] = vocab_path
+    model_setup['model_path'] = model_path
+    model_setup['n_class'] = n_class
+    model_setup['datetime'] = current_datetime
+    with open(os.path.join(args.out, 'args.json'), 'w') as f:
+        json.dump(args.__dict__, f)
+
+    # Run the training
     trainer.run()
-    return model
 
 
-def model_fn(model_dir):
-    model = L.Classifier(MLP(1000, 10))
-    serializers.load_npz(os.path.join(model_dir, 'model.npz'), model)
-    return model.predictor
+if __name__ == '__main__':
+    main()
