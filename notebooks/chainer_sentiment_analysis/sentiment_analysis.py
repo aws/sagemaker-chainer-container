@@ -12,11 +12,12 @@
 # language governing permissions and limitations under the License.
 
 import os
+import json
 
 import numpy as np
 import chainer
 from chainer import training
-from chainer.backends import cuda
+from chainer import serializers
 from chainer.training import extensions
 
 import nets
@@ -52,7 +53,7 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
     test_data = np.load(os.path.join(channel_input_dirs['test'], 'test_data.npy'))
     test_labels = np.load(os.path.join(channel_input_dirs['test'], 'test_labels.npy'))
     
-    vocab = np.load(os.path.join(channel_input_dirs['test'], 'vocab.npy')).tolist()
+    vocab = np.load(os.path.join(channel_input_dirs['vocab'], 'vocab.npy')).tolist()
     
     train = chainer.datasets.TupleDataset(train_data, train_labels)
     test = chainer.datasets.TupleDataset(test_data, test_labels)
@@ -60,18 +61,15 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
     print('# train data: {}'.format(len(train)))
     print('# test  data: {}'.format(len(test)))
     print('# vocab: {}'.format(len(vocab)))
-    n_class = len(set([int(d[1]) for d in train]))
-    print('# class: {}'.format(n_class))
-    
-    train_iter = chainer.iterators.SerialIterator(train, args.batchsize)
-    test_iter = chainer.iterators.SerialIterator(test, args.batchsize, repeat=False, shuffle=False)
+    num_classes = len(set([int(d[1]) for d in train]))
+    print('# class: {}'.format(num_classes))
                     
     batch_size = hyperparameters.get('batch_size', 64)
     epochs = hyperparameters.get('epochs', 30)
     dropout = hyperparameters.get('dropout', 0.4)
-    num_layers = hyperparameters.get('layer', 1)
+    num_layers = hyperparameters.get('num_layers', 1)
     num_units = hyperparameters.get('num_units', 300)
-    model = hyperparameters.get('model', 'rnn')
+    model_type = hyperparameters.get('model', 'rnn')
     
     print('# Minibatch-size: {}'.format(batch_size))
     print('# epoch: {}'.format(epochs))
@@ -80,14 +78,17 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
     print('# Units: {}'.format(num_units))
         
     # Setup a model
-        if args.model == 'rnn':
+    if model_type == 'rnn':
         Encoder = nets.RNNEncoder
-    elif args.model == 'cnn':
+    elif model_type == 'cnn':
         Encoder = nets.CNNEncoder
-    elif args.model == 'bow':
+    elif model_type == 'bow':
         Encoder = nets.BOWMLPEncoder
+    else:
+        raise ValueError('model_type must be "rnn", "cnn", or "bow"')
+
     encoder = Encoder(n_layers=num_layers, n_vocab = len(vocab), n_units=num_units, dropout=dropout)
-    model = nets.TextClassifier(encoder, n_class)
+    model = nets.TextClassifier(encoder, num_classes)
     
     if num_gpus >= 0:
         # Make a specified GPU current
@@ -132,11 +133,23 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
 
     # Print a progress bar to stdout
     trainer.extend(extensions.ProgressBar())
+    
+    if extensions.PlotReport.available():
+        trainer.extend(
+            extensions.PlotReport(['main/loss', 'validation/main/loss'],
+                                  'epoch', file_name='loss.png'))
+        trainer.extend(
+            extensions.PlotReport(
+                ['main/accuracy', 'validation/main/accuracy'],
+                'epoch', file_name='accuracy.png'))
 
     # Save additional model settings, which will be used to reconstruct the model during hosting
-    model_setup = hyperparameters.copy()
-    model_setup['n_class'] = n_class
-    model_setup['datetime'] = current_datetime
+    model_setup = {}
+    model_setup['num_classes'] = num_classes
+    model_setup['model_type'] = model_type
+    model_setup['num_layers'] = num_layers
+    model_setup['num_units'] = num_units
+    model_setup['dropout'] = dropout
 
     # Run the training
     trainer.run()
@@ -145,12 +158,12 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
     # model artifact model.tar.gz, and the contents of `output_data_dir` in the output
     # artifact output.tar.gz.
     
-    # return the best model
-    best_model = np.load(os.path.join(output_data_dir, 'best_model.npz'))
+    # load the best model
+    serializers.load_npz(os.path.join(output_data_dir, 'best_model.npz'), model)
     
     # remove the best model from output artifacts (since it will be saved as a model artifact)
     os.remove(os.path.join(output_data_dir, 'best_model.npz'))
-    return best_model, vocab, model_setup
+    return model, vocab, model_setup
 
 
 def save(model, model_dir):
@@ -178,6 +191,7 @@ def save(model, model_dir):
         json.dump(vocab, f)
     with open(os.path.join(model_dir, 'args.json'), 'w') as f:
         json.dump(model_setup, f)
+                         
 
 
 # ------------------------------------------------------------ #
@@ -185,7 +199,52 @@ def save(model, model_dir):
 # ------------------------------------------------------------ #
 
 def model_fn(model_dir):
-    pass
+    """
+    This function is called by the Chainer container during hosting when running on SageMaker with
+    values populated by the hosting environment.
+    
+    Above, we defined a function `save(model, model_dir)`, which saves model artifacts during training.
+    T
+    
+    By default, the Chainer container saves models as .npz files, with the name 'model.npz'. In
+    your training script, you can override this behavior by implementing a function with
+    signature `save(model, model_dir)`.
+
+    Args:
+        model_dir (str): path to the directory containing the saved model artifacts
+
+    Returns:
+        a loaded Chainer model
+    
+    For more on `model_fn` and `save`, please visit the sagemaker-python-sdk repository:
+    https://github.com/aws/sagemaker-python-sdk
+    
+    For more on the Chainer container, please visit the sagemaker-chainer-containers repository:
+    https://github.com/aws/sagemaker-chainer-containers
+    """
+    model_path = os.path.join(model_dir, 'model.npz')
+    
+    vocab_path = os.path.join(model_dir, 'vocab.json')
+    model_setup_path = os.path.join(model_dir, 'args.json')
+    with open(vocab_path, 'r') as f:
+        vocab = json.load(f)
+    with open(model_setup_path, 'r') as f:
+        model_setup = json.load(f)
+        
+    model_type = model_setup['model_type']
+    if model_type == 'rnn':
+        Encoder = nets.RNNEncoder
+    elif model_type == 'cnn':
+        Encoder = nets.CNNEncoder
+    elif model_type == 'bow':
+        Encoder = nets.BOWMLPEncoder
+    num_layers = model_setup['num_layers']
+    num_units = model_setup['num_units']
+    dropout = model_setup['dropout']
+    encoder = Encoder(n_layers=num_layers, n_vocab=len(vocab), n_units=num_units, dropout=dropout)
+    model = nets.TextClassifier(encoder, num_classes)
+    
+    return model, vocab
 
 def transform_fn(model, data, input_content_type, output_content_type):
     pass
