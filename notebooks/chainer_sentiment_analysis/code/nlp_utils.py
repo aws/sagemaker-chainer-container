@@ -78,4 +78,3 @@ def convert_seq(batch, device=None, with_label=True):
                 'ys': to_device_batch([y for _, y in batch])}
     else:
         return to_device_batch([x for x in batch])
-
