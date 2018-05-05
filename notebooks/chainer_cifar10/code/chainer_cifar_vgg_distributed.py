@@ -55,23 +55,24 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
     https://github.com/aws/sagemaker-chainer-containers
     """
 
-    train_data = np.load(os.path.join(channel_input_dirs['train'], 'train_data.npz'))['arr_0']
-    train_labels = np.load(os.path.join(channel_input_dirs['train'], 'train_labels.npz'))['arr_0']
+    train_data = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))['data']
+    train_labels = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))['labels']
 
-    test_data = np.load(os.path.join(channel_input_dirs['test'], 'test_data.npz'))['arr_0']
-    test_labels = np.load(os.path.join(channel_input_dirs['test'], 'test_labels.npz'))['arr_0']
+    test_data = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))['data']
+    test_labels = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))['labels']
 
     train = chainer.datasets.TupleDataset(train_data, train_labels)
     test = chainer.datasets.TupleDataset(test_data, test_labels)
 
     # retrieve the hyperparameters we set in notebook (with some defaults)
     batch_size = hyperparameters.get('batch_size', 256)
-    epochs = hyperparameters.get('epochs', 300)
+    epochs = hyperparameters.get('epochs', 50)
     learning_rate = hyperparameters.get('learning_rate', 0.05)
-    communicator = hyperparameters.get('communicator', 'hierarchical') if num_gpus > 0 else 'naive'
+    communicator = hyperparameters.get('communicator', 'pure_nccl' if num_gpus > 0 else 'naive')
 
     comm = chainermn.create_communicator(communicator)
 
+    # comm.inter_rank gives the rank of the node. This should only print on one node.
     if comm.inter_rank == 0:
         print('# Minibatch-size: {}'.format(batch_size))
         print('# epoch: {}'.format(epochs))
@@ -85,6 +86,7 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
     model = L.Classifier(net.VGG(10))
     # Make a specified GPU current
 
+    # comm.intra_rank gives the rank of the process on a given node.
     device = comm.intra_rank if num_gpus > 0 else -1
     if device >= 0:
         chainer.cuda.get_device_from_id(device).use()
@@ -92,9 +94,10 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
     optimizer = chainermn.create_multi_node_optimizer(chainer.optimizers.MomentumSGD(learning_rate), comm)
     optimizer.setup(model)
     optimizer.add_hook(chainer.optimizer.WeightDecay(5e-4))
-
-    train_iter = chainer.iterators.SerialIterator(train, batch_size)
-    test_iter = chainer.iterators.SerialIterator(test, batch_size,repeat=False, shuffle=False)
+    
+    num_loaders = 2
+    train_iter = chainer.iterators.MultiprocessIterator(train, batch_size, n_processes=num_loaders)
+    test_iter = chainer.iterators.MultiprocessIterator(test, batch_size, repeat=False, n_processes=num_loaders)
 
     # Set up a trainer
     updater = training.StandardUpdater(train_iter, optimizer, device=device)
@@ -112,9 +115,6 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
     # Dump a computational graph from 'loss' variable at the first iteration
     # The "main" refers to the target link of the "main" optimizer.
     trainer.extend(extensions.dump_graph('main/loss'))
-
-    # Take a snapshot at each epoch
-    trainer.extend(extensions.snapshot(), trigger=(epochs, 'epoch'))
 
     # Write a log of evaluation statistics for each epoch
     trainer.extend(extensions.LogReport())
@@ -142,7 +142,7 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
 
 def model_fn(model_dir):
     """
-    This function is called by the Chainer container during hostin when running on SageMaker with
+    This function is called by the Chainer container during hosting when running on SageMaker with
     values populated by the hosting environment.
     
     By default, the Chainer container saves models as .npz files, with the name 'model.npz'. In
@@ -150,7 +150,7 @@ def model_fn(model_dir):
     signature `save(model, model_dir)`.
 
     Args:
-        model_dir (str): path to the directory containing the saved model
+        model_dir (str): path to the directory containing the saved model artifacts
 
     Returns:
         a loaded Chainer model

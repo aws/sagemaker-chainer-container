@@ -48,11 +48,11 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
     https://github.com/aws/sagemaker-chainer-containers
     """
 
-    train_data = np.load(os.path.join(channel_input_dirs['train'], 'train_data.npz'))['arr_0']
-    train_labels = np.load(os.path.join(channel_input_dirs['train'], 'train_labels.npz'))['arr_0']
+    train_data = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))['data']
+    train_labels = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))['labels']
 
-    test_data = np.load(os.path.join(channel_input_dirs['test'], 'test_data.npz'))['arr_0']
-    test_labels = np.load(os.path.join(channel_input_dirs['test'], 'test_labels.npz'))['arr_0']
+    test_data = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))['data']
+    test_labels = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))['labels']
 
     train = chainer.datasets.TupleDataset(train_data, train_labels)
     test = chainer.datasets.TupleDataset(test_data, test_labels)
@@ -61,6 +61,7 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
     batch_size = hyperparameters.get('batch_size', 64)
     epochs = hyperparameters.get('epochs', 300)
     learning_rate = hyperparameters.get('learning_rate', 0.05)
+    num_loaders = hyperparameters.get('num_loaders', None) # defaults to num_cpus
 
     print('# Minibatch-size: {}'.format(batch_size))
     print('# epoch: {}'.format(epochs))
@@ -70,28 +71,21 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
     # iteration, which will be used by the PrintReport extension below.
     model = L.Classifier(net.VGG(10))
 
-    # Make a specified GPU current
-    if num_gpus > 0:
-        chainer.cuda.get_device_from_id(0).use()
-
     optimizer = chainer.optimizers.MomentumSGD(learning_rate)
     optimizer.setup(model)
     optimizer.add_hook(chainer.optimizer.WeightDecay(5e-4))
 
-    train_iter = chainer.iterators.SerialIterator(train, batch_size)
-    test_iter = chainer.iterators.SerialIterator(test, batch_size, repeat=False, shuffle=False)
-
     # Set up a trainer
     device = 0 if num_gpus > 0 else -1  # -1 indicates CPU, 0 indicates first GPU device.
-    if num_gpus > 0:
-        updater = training.updater.ParallelUpdater(
-            train_iter,
-            optimizer,
-            # The device of the name 'main' is used as a "master", while others are
-            # used as slaves. Names other than 'main' are arbitrary.
-            devices={('main' if device == 0 else str(device)): device for device in range(num_gpus)},
-        )
+    if num_gpus > 1:
+        devices = range(num_gpus)
+        train_iters = [chainer.iterators.MultiprocessIterator(i, batch_size, n_processes=num_gpus) \
+                    for i in chainer.datasets.split_dataset_n_random(train, len(devices))]
+        test_iter = chainer.iterators.MultiprocessIterator(test, batch_size, repeat=False, n_processes=num_gpus)
+        updater = training.updaters.MultiprocessParallelUpdater(train_iters, optimizer, devices=range(num_gpus))
     else:
+        train_iter = chainer.iterators.MultiprocessIterator(train, batch_size)
+        test_iter = chainer.iterators.MultiprocessIterator(test, batch_size, repeat=False)
         updater = training.updater.StandardUpdater(train_iter, optimizer, device=device)
 
     stop_trigger = (epochs, 'epoch')
@@ -105,9 +99,6 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
     # Dump a computational graph from 'loss' variable at the first iteration
     # The "main" refers to the target link of the "main" optimizer.
     trainer.extend(extensions.dump_graph('main/loss'))
-
-    # Take a snapshot at each epoch
-    trainer.extend(extensions.snapshot(), trigger=(epochs, 'epoch'))
 
     # Write a log of evaluation statistics for each epoch
     trainer.extend(extensions.LogReport())
@@ -142,7 +133,7 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
 
 def model_fn(model_dir):
     """
-    This function is called by the Chainer container during hostin when running on SageMaker with
+    This function is called by the Chainer container during hosting when running on SageMaker with
     values populated by the hosting environment.
     
     By default, the Chainer container saves models as .npz files, with the name 'model.npz'. In
@@ -150,7 +141,7 @@ def model_fn(model_dir):
     signature `save(model, model_dir)`.
 
     Args:
-        model_dir (str): path to the directory containing the saved model
+        model_dir (str): path to the directory containing the saved model artifacts
 
     Returns:
         a loaded Chainer model
@@ -161,7 +152,7 @@ def model_fn(model_dir):
     For more on the Chainer container, please visit the sagemaker-chainer-containers repository:
     https://github.com/aws/sagemaker-chainer-containers
     """
-
+    chainer.config.train = False
     model = L.Classifier(net.VGG(10))
     serializers.load_npz(os.path.join(model_dir, 'model.npz'), model)
     return model.predictor
