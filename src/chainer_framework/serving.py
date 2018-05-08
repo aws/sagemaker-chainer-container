@@ -64,13 +64,10 @@ def predict_fn(input_data, model):
 
     Returns: a prediction
     """
-    chainer.config.train = False
-    if chainer.cuda.available:
-        input_data = cp.array(input_data)
-        model.to_gpu()
 
-    predicted_data = model(input_data)
-    return predicted_data.data
+    with chainer.using_config('train', False), chainer.no_backprop_mode():
+        predicted_data = model(input_data)
+        return predicted_data.data
 
 
 @engine.output_fn()
@@ -84,15 +81,16 @@ def output_fn(prediction_output, accept):
     Returns
         output data serialized
     """
-    prediction_output = prediction_output.tolist() if hasattr(prediction_output, 'tolist') else prediction_output
 
     if accept == JSON_CONTENT_TYPE:
+        prediction_output = prediction_output.tolist() if hasattr(prediction_output, 'tolist') else prediction_output
         return json.dumps(prediction_output), JSON_CONTENT_TYPE
 
     if accept == NPY_CONTENT_TYPE:
         return npy.dumps(prediction_output), NPY_CONTENT_TYPE
 
     if accept == CSV_CONTENT_TYPE:
+        prediction_output = prediction_output.tolist() if hasattr(prediction_output, 'tolist') else prediction_output
         return csv.dumps(prediction_output), CSV_CONTENT_TYPE
 
     raise UnsupportedAcceptTypeError(accept)
