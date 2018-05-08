@@ -154,27 +154,15 @@ def test_distributed_training_dont_save_model_on_worker_nodes(worker_node_distri
 
 def test_distributed_training_from_master_node(master_node_distributed_training_env, user_module):
     with patch('chainer_framework.training._change_hostname') as mock_change_hostname, \
+         patch('chainer_framework.training._start_ssh_daemon') as mock_start_ssh_daemon, \
          patch('chainer_framework.training._wait_for_worker_nodes_to_start_sshd') as mock_wait_for_sshd, \
          patch ('chainer_framework.training._run_mpi_on_all_nodes') as mock_run_mpi_on_all_nodes:
 
         train(user_module, master_node_distributed_training_env)
 
         mock_change_hostname.assert_called_once_with(master_node_distributed_training_env.current_host)
-        mock_wait_for_sshd.assert_called_once_with([host for host in master_node_distributed_training_env.hosts
-                                                    if host != master_node_distributed_training_env.current_host])
-        mock_run_mpi_on_all_nodes.assert_called_once_with(master_node_distributed_training_env)
-
-
-def test_distributed_training_from_master_node(master_node_distributed_training_env, user_module):
-    with patch('chainer_framework.training._change_hostname') as mock_change_hostname, \
-         patch('chainer_framework.training._wait_for_worker_nodes_to_start_sshd') as mock_wait_for_sshd, \
-         patch ('chainer_framework.training._run_mpi_on_all_nodes') as mock_run_mpi_on_all_nodes:
-
-        train(user_module, master_node_distributed_training_env)
-
-        mock_change_hostname.assert_called_once_with(master_node_distributed_training_env.current_host)
-        mock_wait_for_sshd.assert_called_once_with([host for host in master_node_distributed_training_env.hosts
-                                                    if host != master_node_distributed_training_env.current_host])
+        mock_start_ssh_daemon.assert_called_once()
+        mock_wait_for_sshd.assert_called_once_with(master_node_distributed_training_env.hosts)
         mock_run_mpi_on_all_nodes.assert_called_once_with(master_node_distributed_training_env)
 
 
