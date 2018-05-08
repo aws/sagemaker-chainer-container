@@ -3,12 +3,6 @@ import json
 import numpy as np
 import chainer
 
-# Try to import cupy (for GPU inference)
-try:
-    import cupy as cp
-except ImportError:
-    None
-
 from chainer_framework.serialization import npy, csv
 from container_support.app import ServingEngine
 from container_support.serving import JSON_CONTENT_TYPE, CSV_CONTENT_TYPE, NPY_CONTENT_TYPE, \
