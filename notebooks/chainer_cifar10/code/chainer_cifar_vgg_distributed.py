@@ -133,7 +133,6 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
         trainer.extend(extensions.PrintReport(
             ['epoch', 'main/loss', 'validation/main/loss',
              'main/accuracy', 'validation/main/accuracy', 'elapsed_time']))
-        trainer.extend(extensions.ProgressBar())
 
     # Run the training
     trainer.run()

@@ -61,7 +61,6 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
     batch_size = hyperparameters.get('batch_size', 64)
     epochs = hyperparameters.get('epochs', 300)
     learning_rate = hyperparameters.get('learning_rate', 0.05)
-    num_loaders = hyperparameters.get('num_loaders', None) # defaults to num_cpus
 
     print('# Minibatch-size: {}'.format(batch_size))
     print('# epoch: {}'.format(epochs))
@@ -79,7 +78,7 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
     device = 0 if num_gpus > 0 else -1  # -1 indicates CPU, 0 indicates first GPU device.
     if num_gpus > 1:
         devices = range(num_gpus)
-        train_iters = [chainer.iterators.MultiprocessIterator(i, batch_size, n_processes=num_gpus) \
+        train_iters = [chainer.iterators.MultiprocessIterator(i, batch_size, n_processes=4) \
                     for i in chainer.datasets.split_dataset_n_random(train, len(devices))]
         test_iter = chainer.iterators.MultiprocessIterator(test, batch_size, repeat=False, n_processes=num_gpus)
         updater = training.updaters.MultiprocessParallelUpdater(train_iters, optimizer, devices=range(num_gpus))
@@ -121,11 +120,7 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
         ['epoch', 'main/loss', 'validation/main/loss',
          'main/accuracy', 'validation/main/accuracy', 'elapsed_time']))
 
-    # Print a progress bar to stdout
-    trainer.extend(extensions.ProgressBar())
-
     # Run the training
-
     trainer.run()
 
     return model
