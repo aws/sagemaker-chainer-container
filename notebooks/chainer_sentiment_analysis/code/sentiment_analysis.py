@@ -125,9 +125,6 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
         ['epoch', 'main/loss', 'validation/main/loss',
          'main/accuracy', 'validation/main/accuracy', 'elapsed_time']))
 
-    # Print a progress bar to stdout
-    trainer.extend(extensions.ProgressBar())
-
     if extensions.PlotReport.available():
         trainer.extend(
             extensions.PlotReport(['main/loss', 'validation/main/loss'],
