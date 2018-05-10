@@ -1,12 +1,7 @@
 import chainer
 
-# Try to import cupy (for GPU inference)
-try:
-    import cupy as cp
-except ImportError:
-    None
-
 from sagemaker_containers import transformers
+from chainer_framework.serialization import npy, csv
 
 
 class ChainerTransformer(transformers.BaseTransformer):
@@ -19,13 +14,10 @@ class ChainerTransformer(transformers.BaseTransformer):
 
         Returns: a prediction
         """
-        chainer.config.train = False
-        if chainer.cuda.available:
-            input_data = cp.array(input_data)
-            model.to_gpu()
 
-        predicted_data = model(input_data)
-        return predicted_data.data
+        with chainer.using_config('train', False), chainer.no_backprop_mode():
+            predicted_data = model(input_data)
+            return predicted_data.data
 
     def output_fn(self, prediction_output, accept):
         """A default output_fn for Chainer. Serializes predictions from predict_fn.

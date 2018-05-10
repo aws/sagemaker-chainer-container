@@ -51,13 +51,13 @@ def train(user_module, training_environment):
 
     if use_mpi:
         current_host = training_environment.current_host
-        hosts = training_environment.hosts
+        hosts = list(training_environment.hosts)
         _change_hostname(current_host)
+        _start_ssh_daemon()
         if current_host == _get_master_host_name(hosts):
-            _wait_for_worker_nodes_to_start_sshd([host for host in hosts if host != current_host])
+            _wait_for_worker_nodes_to_start_sshd(hosts)
             _run_mpi_on_all_nodes(training_environment)
         else:
-            _start_ssh_daemon()
             _wait_for_training_to_finish(training_environment)
     else:
         _run_training(training_environment, user_module)
