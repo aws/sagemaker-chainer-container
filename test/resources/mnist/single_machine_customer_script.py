@@ -47,7 +47,7 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb
         return images
 
 
-def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
+def train(channel_input_dirs, hyperparameters, num_gpu, output_data_dir):
     train_file = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))
     test_file = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))
 
@@ -71,7 +71,7 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
     # iteration, which will be used by the PrintReport extension below.
     model = L.Classifier(MLP(units, 10))
 
-    if num_gpus > 0:
+    if num_gpu > 0:
         chainer.cuda.get_device_from_id(0).use()
 
     # Setup an optimizer
@@ -84,14 +84,14 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
                                                  repeat=False, shuffle=False)
 
     # Set up a trainer
-    device = 0 if num_gpus > 0 else -1  # -1 indicates CPU, 0 indicates first GPU device.
-    if num_gpus > 0:
+    device = 0 if num_gpu > 0 else -1  # -1 indicates CPU, 0 indicates first GPU device.
+    if num_gpu > 0:
         updater = training.updater.ParallelUpdater(
             train_iter,
             optimizer,
             # The device of the name 'main' is used as a "master", while others are
             # used as slaves. Names other than 'main' are arbitrary.
-            devices={('main' if device == 0 else str(device)): device for device in range(num_gpus)})
+            devices={('main' if device == 0 else str(device)): device for device in range(num_gpu)})
     else:
         updater = training.updater.StandardUpdater(train_iter, optimizer, device=device)
 

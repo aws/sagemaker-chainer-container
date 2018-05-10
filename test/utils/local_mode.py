@@ -13,18 +13,13 @@ import requests
 import yaml
 
 from botocore.exceptions import ClientError
-from os.path import join
 from sagemaker import fw_utils
-from chainer_framework.serving import NPY_CONTENT_TYPE
-from chainer_framework.serialization import npy, csv
-
+from sagemaker_containers import content_types, encoder
 
 CYAN_COLOR = '\033[36m'
 END_COLOR = '\033[0m'
 
 REQUEST_URL = "http://localhost:8080/invocations"
-JSON_CONTENT_TYPE = "application/json"
-CSV_CONTENT_TYPE = "text/csv"
 
 CONTAINER_PREFIX = "algo"
 DOCKER_COMPOSE_FILENAME = 'docker-compose.yaml'
@@ -33,7 +28,8 @@ SAGEMAKER_REGION = 'us-west-2'
 DEFAULT_HYPERPARAMETERS = {
     'sagemaker_enable_cloudwatch_metrics': False,
     'sagemaker_container_log_level': str(logging.INFO),
-    'sagemaker_region': SAGEMAKER_REGION
+    'sagemaker_region': SAGEMAKER_REGION,
+    'sagemaker_job_name': 'test'
 }
 DEFAULT_HOSTING_ENV = [
     'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS=false',
@@ -41,22 +37,22 @@ DEFAULT_HOSTING_ENV = [
     'SAGEMAKER_REGION={}'.format(SAGEMAKER_REGION)
 ]
 
-def build_base_image(framework_name, framework_version, processor, base_image_tag, cwd='.'):
 
+def build_base_image(framework_name, framework_version, processor, base_image_tag, cwd='.'):
     base_image_uri = get_base_image_uri(framework_name, base_image_tag)
 
     dockerfile_location = os.path.join('docker', framework_version, 'base', 'Dockerfile.{}'.format(processor))
 
     build_directory = os.path.dirname(dockerfile_location)
 
-    subprocess.check_call(['docker', 'build', '-t', base_image_uri, '-f', dockerfile_location, build_directory], cwd=cwd)
+    subprocess.check_call(['docker', 'build', '-t', base_image_uri, '-f', dockerfile_location, build_directory],
+                          cwd=cwd)
     print('created image {}'.format(base_image_uri))
     return base_image_uri
 
 
 def build_image(py_version, framework_name, framework_version, processor, tag, cwd='.'):
     check_call('python setup.py bdist_wheel')
-    check_call('python setup.py bdist_wheel', cwd='sagemaker-container-support')
 
     image_uri = get_image_uri(framework_name, tag)
 
@@ -132,7 +128,6 @@ def train(customer_script, data_dir, image_name, opt_ml, cluster_size=1, hyperpa
 
 def serve(customer_script, model_dir, image_name, opt_ml, cluster_size=1, additional_volumes=[],
           additional_env_vars=[], use_gpu=False, entrypoint=None, source_dir=None):
-
     tmpdir = create_hosting_dir(model_dir, customer_script, opt_ml, image_name, additional_volumes, additional_env_vars,
                                 cluster_size, source_dir, entrypoint)
     command = create_docker_command(tmpdir, use_gpu)
@@ -585,22 +580,9 @@ def get_model_dir(resource_folder, host='algo-1'):
     return os.path.join(resource_folder, host)
 
 
-def install_container_support():
-    dir_path = os.path.dirname(os.path.realpath(__file__))
-    sagemaker_container_dir = join(dir_path, '..', '..', 'sagemaker-container-support')
-    check_call('pip install --upgrade .', cwd=sagemaker_container_dir)
-
-
-def request(data, request_type=JSON_CONTENT_TYPE):
-    if request_type == JSON_CONTENT_TYPE:
-        serializer = json
-    elif request_type == CSV_CONTENT_TYPE:
-        serializer = csv
-    elif request_type == NPY_CONTENT_TYPE:
-        serializer = npy
-
+def request(data, content_type=content_types.JSON):
     serialized_output = requests.post(REQUEST_URL,
-                                      data=serializer.dumps(data),
-                                      headers={'Content-type': request_type,
-                                               'Accept': request_type}).content
-    return serializer.loads(serialized_output)
+                                      data=encoder.DefaultEncoder().encode(data, content_type),
+                                      headers={'Content-type': content_type,
+                                               'Accept': content_type}).content
+    return encoder.DefaultDecoder().decode(serialized_output, content_type)

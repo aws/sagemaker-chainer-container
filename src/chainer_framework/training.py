@@ -8,13 +8,9 @@ import time
 from chainer_framework.timeout import timeout
 from chainer import serializers
 
-from container_support.app import TrainingEngine
-import container_support as cs
-from container_support.environment import TrainingEnvironment
+from sagemaker_containers import env, functions, modules
 
 logger = logging.getLogger(__name__)
-
-engine = TrainingEngine()
 
 _PORT = 7777
 _MPI_SCRIPT = "/mpi_script.sh"
@@ -24,7 +20,7 @@ _CHANGE_HOSTNAME_LIBRARY = "/libchangehostname.so"
 
 MODEL_FILE_NAME = "model.npz"
 
-@engine.train()
+
 def train(user_module, training_environment):
     """Runs Chainer training on a user supplied module in either a local or distributed
     SageMaker environment.
@@ -68,7 +64,7 @@ def train(user_module, training_environment):
 
 
 def _run_training(env, user_module):
-    training_parameters = env.matching_parameters(user_module.train)
+    training_parameters = functions.matching_args(user_module.train, env)
     logger.info('Invoking user training script.')
     model = user_module.train(**training_parameters)
 
@@ -80,7 +76,7 @@ def _run_training(env, user_module):
         else:
             _default_save(env, model)
     if not model and on_master_node:
-        logger.warn("Model object is empty. No model was saved! train() should return a model.")
+        logger.warning("Model object is empty. No model was saved! train() should return a model.")
 
 
 def _default_save(env, model):
@@ -184,7 +180,7 @@ def _wait_for_training_to_finish(training_environment):
     logger.info("MPI started training process on worker node {}".format(current_host))
 
     _wait_until_mpi_stops_running()
-    logger.info("Training process started by MPI on worker node {} stopped" .format(current_host))
+    logger.info("Training process started by MPI on worker node {} stopped".format(current_host))
 
 
 def _wait_for_worker_nodes_to_start_sshd(hosts, interval=1, timeout_in_seconds=180):
@@ -214,19 +210,27 @@ def _retry_if_false(result):
     return result is False
 
 
-@cs.retry(stop_max_delay=30 * 1000,
-          wait_fixed=1000,
-          retry_on_result=_retry_if_false)
+# @cs.retry(stop_max_delay=30 * 1000,
+#           wait_fixed=1000,
+#           retry_on_result=_retry_if_false)
 def _wait_for_mpi_to_start_running():
     return os.path.isfile(_MPI_IS_RUNNING)
 
 
-@cs.retry(wait_fixed=5000,
-          retry_on_result=_retry_if_false)
+# @cs.retry(wait_fixed=5000,
+#           retry_on_result=_retry_if_false)
 def _wait_until_mpi_stops_running():
     return os.path.isfile(_MPI_IS_FINISHED)
 
 
-if __name__=="__main__":
-    env = TrainingEnvironment()
-    _run_training(env, env.import_user_module())
+def main():
+    training_env = env.TrainingEnv()
+
+    mod = modules.download_and_import(training_env.module_dir, training_env.module_name)
+
+    try:
+        train(mod, training_env)
+
+        training_env.write_success()
+    except Exception e:
+        training_env.write_failure(e, traceback())

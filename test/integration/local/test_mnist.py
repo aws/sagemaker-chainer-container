@@ -7,6 +7,7 @@ from test.utils import local_mode, test_utils
 mnist_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..', 'resources', 'mnist')
 data_dir = os.path.join(mnist_path, 'data')
 
+
 def test_chainer_mnist_single_machine(docker_image, opt_ml, use_gpu):
     customer_script = 'single_machine_customer_script.py'
     hyperparameters = {'batch_size': 10000, 'epochs': 1}
@@ -15,7 +16,7 @@ def test_chainer_mnist_single_machine(docker_image, opt_ml, use_gpu):
                      hyperparameters=hyperparameters, source_dir=mnist_path, use_gpu=use_gpu)
 
     files = ['model/model.npz', 'output/success', 'output/data/accuracy.png',
-                               'output/data/cg.dot', 'output/data/log', 'output/data/loss.png']
+             'output/data/cg.dot', 'output/data/log', 'output/data/loss.png']
     test_utils.files_exist(opt_ml, files)
     assert not local_mode.file_exists(opt_ml, 'output/failure'), 'Failure happened'
     with local_mode.serve(os.path.join(mnist_path, customer_script), model_dir=None, image_name=docker_image,
@@ -60,7 +61,7 @@ def test_chainer_mnist_distributed(docker_image, opt_ml, use_gpu):
                        'num_processes': cluster_size,
                        'batch_size': 10000,
                        'epochs': 1,
-                       'communicator':'hierarchical'}
+                       'communicator': 'hierarchical'}
 
     local_mode.train(customer_script, data_dir, docker_image, opt_ml, hyperparameters=hyperparameters,
                      cluster_size=cluster_size, source_dir=mnist_path, use_gpu=use_gpu)

@@ -6,10 +6,7 @@ RUN pip2 install --no-cache chainer==4.0.0 chainermn==1.2.0 chainercv==0.9.0 mat
 # https://matplotlib.org/tutorials/introductory/usage.html#what-is-a-backend
 RUN sed -i s/TkAgg/Agg/ /usr/local/lib/python2.7/dist-packages/matplotlib/mpl-data/matplotlibrc
 
-COPY sagemaker-container-support/dist/sagemaker_container_support-1.0-py2.py3-none-any.whl /sagemaker_container_support-1.0-py2.py3-none-any.whl
-COPY dist/sagemaker_chainer_container-1.0-py2.py3-none-any.whl /sagemaker_chainer_container-1.0-py2.py3-none-any.whl
-
-RUN pip2 install --no-cache /sagemaker_container_support-1.0-py2.py3-none-any.whl && \
+RUN pip2 install --no-cache git+https://github.com/aws/sagemaker-containers@r2.0 && \
     pip2 install --no-cache /sagemaker_chainer_container-1.0-py2.py3-none-any.whl
 
-ENTRYPOINT ["python", "-m", "chainer_framework.start"]
+ENV SAGEMAKER_TRAINING_MODULE chainer_framework:main

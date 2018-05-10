@@ -15,7 +15,7 @@ setup(
     version='1.0',
     description='Open source library template for creating containers to run on Amazon SageMaker.',
     packages=find_packages(where='src', exclude=('test',)),
-    package_dir={'': 'src'},
+    package_dir={'chainer_framework': 'src/chainer_framework'},
     py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
 
     long_description=read('README.rst'),
@@ -32,7 +32,8 @@ setup(
         'Programming Language :: Python :: 3.5',
     ],
 
-    install_requires=['sagemaker-container-support', 'chainer'],
+    install_requires=['sagemaker-containers==2.0.0', 'chainer'],
+    dependency_links=['pip install git+https://github.com/mvsusp/sagemaker-containers@r2.0'],
     extras_require={
         'test': ['tox', 'flake8', 'flake8-import-order', 'pytest', 'pytest-cov', 'pytest-xdist', 'mock', 'Flask', 'boto3>=1.4.8',
                  'docker-compose', 'nvidia-docker-compose', 'sagemaker', 'PyYAML']

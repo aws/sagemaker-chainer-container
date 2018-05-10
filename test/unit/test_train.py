@@ -4,10 +4,9 @@ import shutil
 import tempfile
 
 import pytest
-from container_support import ContainerEnvironment
-from mock import MagicMock, patch
+from mock import MagicMock
 
-from chainer_framework.training import train
+from sagemaker_containers import env
 
 INPUT_DATA_CONFIG = {
     "train": {"ContentType": "trainingContentType"},
@@ -16,9 +15,9 @@ INPUT_DATA_CONFIG = {
 }
 
 HYPERPARAMETERS = {
-    ContainerEnvironment.SAGEMAKER_REGION_PARAM_NAME: 'us-west-2',
-    ContainerEnvironment.USER_SCRIPT_NAME_PARAM: 'myscript.py',
-    ContainerEnvironment.USER_SCRIPT_ARCHIVE_PARAM: 's3://mybucket/code.tar.gz'
+    env.REGION_NAME_PARAM: 'us-west-2',
+    env.USER_PROGRAM_PARAM: 'myscript.py',
+    env.SUBMIT_DIR_PARAM: 's3://mybucket/code.tar.gz'
 }
 
 

@@ -7,7 +7,6 @@ import tempfile
 import boto3
 import pytest
 
-
 from sagemaker import Session
 
 from test.utils import local_mode
@@ -21,17 +20,17 @@ logging.getLogger('connectionpool.py').setLevel(logging.INFO)
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
+
 def pytest_addoption(parser):
     parser.addoption('--build-image', '-D', action="store_true")
     parser.addoption('--build-base-image', '-B', action="store_true")
-    parser.addoption('--install-container-support', '-C', action="store_true")
     parser.addoption('--aws-id')
     parser.addoption('--instance-type')
     parser.addoption('--docker-base-name', default='chainer')
     parser.addoption('--region', default='us-west-2')
     parser.addoption('--framework-version', default='4.0.0')
     parser.addoption('--py-version', choices=['2', '3'], default='3')
-    parser.addoption('--processor', choices=['gpu','cpu'], default='cpu')
+    parser.addoption('--processor', choices=['gpu', 'cpu'], default='cpu')
     # If not specified, will default to {framework-version}-{processor}-py{py-version}
     parser.addoption('--tag', default=None)
 
@@ -83,19 +82,14 @@ def opt_ml():
     opt_ml_dir = '/private{}'.format(tmp) if platform.system() == 'Darwin' else tmp
     yield opt_ml_dir
 
-    shutil.rmtree(tmp, True)
+    print('----------------------------------------------')
+    print(opt_ml_dir)
+    # shutil.rmtree(tmp, True)
 
 
 @pytest.fixture(scope='session')
 def use_gpu(processor):
     return processor == 'gpu'
-
-
-@pytest.fixture(scope='session', autouse=True)
-def install_container_support(request):
-    install = request.config.getoption('--install-container-support')
-    if install:
-        local_mode.install_container_support()
 
 
 @pytest.fixture(scope='session')
