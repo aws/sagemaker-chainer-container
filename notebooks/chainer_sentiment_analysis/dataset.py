@@ -37,15 +37,13 @@ def download_dataset(name):
     return file_paths
 
 
-def get_stsa_dataset(vocab=None, shrink=1,
+def get_stsa_dataset(file_paths, vocab=None, shrink=1,
                      char_based=False, seed=777):
-    name = "stsa.binary"
-    datasets = download_dataset(name)
     train = read_dataset(
-        datasets[0], shrink=shrink, char_based=char_based)
-    if len(datasets) == 2:
+        file_paths[0], shrink=shrink, char_based=char_based)
+    if len(file_paths) == 2:
         test = read_dataset(
-            datasets[1], shrink=shrink, char_based=char_based)
+            file_paths[1], shrink=shrink, char_based=char_based)
     else:
         numpy.random.seed(seed)
         alldata = numpy.random.permutation(train)
