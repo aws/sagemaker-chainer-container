@@ -1,12 +1,12 @@
 import chainer
 
 # Try to import cupy (for GPU inference)
-from sagemaker_containers import transformer, modules, env, worker
-
 try:
     import cupy as cp
 except ImportError:
     None
+
+from sagemaker_containers import transformer
 
 
 def default_predict_fn(input_data, model):
@@ -42,19 +42,9 @@ def default_output_fn(prediction_output, accept):
     return transformer.default_output_fn(prediction_output, accept)
 
 
-class ChainerTransformer(transformer.Transformer):
-    def __init__(self, model_fn, input_fn, predict_fn=default_predict_fn, output_fn=default_output_fn):
-        super().__init__(model_fn, input_fn, predict_fn, output_fn)
+def create(model_fn=transformer.default_model_fn,
+           input_fn=transformer.default_input_fn,
+           predict_fn=default_predict_fn,
+           output_fn=default_output_fn):
 
-
-def main():
-    serving_env = env.ServingEnv()
-    user_module = modules.download_and_import(serving_env.module_dir, serving_env.module_name)
-
-    # THIS LINE WILL FAIL
-    transformer = ChainerTransformer(output_fn=user_module.output_fn, predict_fn=user_module.predict_fn)
-
-    # I removed the initilize from the worker by mistake I will add it again.
-    transformer.initialize()
-
-    return worker.Worker(transform_fn=transformer.transform, module_name='fake_ml_model')
+    return transformer.create(model_fn, input_fn, predict_fn, output_fn)
