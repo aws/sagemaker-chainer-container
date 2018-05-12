@@ -154,16 +154,18 @@ def _get_mpi_command(training_environment):
 
     additional_mpi_options = str(hyperparameters.get('additional_mpi_options', ''))
 
+    # TODO: add this to TrainingEnv
+    network_interface_name = 'eth0'
     mpi_command = 'mpirun --allow-run-as-root --host {}'.format(",".join(host_list)) \
-                  + " -mca btl_tcp_if_include {}".format(training_environment.network_interface_name) \
-                  + " -mca oob_tcp_if_include {}".format(training_environment.network_interface_name) \
+                  + " -mca btl_tcp_if_include {}".format(network_interface_name) \
+                  + " -mca oob_tcp_if_include {}".format(network_interface_name) \
                   + " -mca btl ^openib" \
                   + " -x PATH" \
                   + " -x LD_LIBRARY_PATH" \
                   + " -x LD_PRELOAD={}".format(_CHANGE_HOSTNAME_LIBRARY) \
                   + " -mca orte_abort_on_non_zero_status 1" \
                   + " -x NCCL_DEBUG=INFO" \
-                  + " -x NCCL_SOCKET_IFNAME={}".format(training_environment.network_interface_name) \
+                  + " -x NCCL_SOCKET_IFNAME={}".format(network_interface_name) \
                   + " -np {} ".format(num_processes) \
                   + " {} ".format(additional_mpi_options) \
                   + " {}".format(_MPI_SCRIPT)
