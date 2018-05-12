@@ -12,6 +12,7 @@ from chainer import serializers
 from sagemaker_containers import env, functions, modules
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 _PORT = 7777
 _MPI_SCRIPT = "/mpi_script.sh"
@@ -59,6 +60,7 @@ def train(user_module, training_environment):
             _wait_for_worker_nodes_to_start_sshd(hosts)
             _run_mpi_on_all_nodes(training_environment)
         else:
+            time.sleep(5)
             _wait_for_training_to_finish(training_environment)
     else:
         _run_training(training_environment, user_module)
@@ -139,7 +141,7 @@ def _get_mpi_command(training_environment):
     Returns:
         str: The mpirun command to run.
     """
-    num_gpus = training_environment.available_gpus
+    num_gpus = training_environment.num_gpu
     hyperparameters = training_environment.hyperparameters
     process_slots_per_host = int(hyperparameters.get('process_slots_per_host', num_gpus if num_gpus > 0 else 1))
 
