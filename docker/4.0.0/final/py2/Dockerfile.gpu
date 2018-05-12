@@ -13,4 +13,5 @@ RUN pip2 install --no-cache git+https://github.com/aws/sagemaker-containers@r2.0
     pip2 install --no-cache /sagemaker_chainer_container-1.0-py2.py3-none-any.whl
 
 ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
-ENV SAGEMAKER_FRAMEWORK_MODULE sagemaker_chainer_container:main
+
+ENV SAGEMAKER_TRAINING_MODULE chainer_framework:main

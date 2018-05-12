@@ -4,6 +4,7 @@ import shlex
 import socket
 import subprocess
 import time
+import traceback
 
 from chainer_framework.timeout import timeout
 from chainer import serializers
@@ -223,6 +224,19 @@ def _wait_until_mpi_stops_running():
     return os.path.isfile(_MPI_IS_FINISHED)
 
 
+# TODO: this should come from sagemaker_containers, once it's implemented there
+def write_success_file(output_dir):
+    success_file = os.path.join(output_dir, 'success')
+    open(success_file, 'w').close()
+
+
+# TODO: this should come from sagemaker_containers, once it's implemented there
+def write_failure_file(message, output_dir):
+    failure_file = os.path.join(output_dir, 'failure')
+    with open(failure_file, 'a') as fd:
+        fd.write(message)
+
+
 def main():
     training_env = env.TrainingEnv()
 
@@ -231,6 +245,9 @@ def main():
     try:
         train(mod, training_env)
 
-        training_env.write_success()
-    except Exception e:
-        training_env.write_failure(e, traceback())
+        write_success_file(training_env.output_dir)
+    except Exception as e:
+        trc = traceback.format_exc()
+        message = 'uncaught exception during training: {}\n{}\n'.format(e, trc)
+        logger.error(message)
+        write_failure_file(message, training_env.output_dir)

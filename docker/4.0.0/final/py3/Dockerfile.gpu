@@ -16,4 +16,4 @@ RUN pip3 install --no-cache /sagemaker_container_support-1.0-py2.py3-none-any.wh
 
 ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 
-ENTRYPOINT ["python", "-m", "chainer_framework.start"]
+ENV SAGEMAKER_TRAINING_MODULE chainer_framework:main

@@ -4,18 +4,26 @@ import numpy as np
 
 from chainer import Variable
 
+from chainer_framework import serving
+
+"""
 from container_support.serving import JSON_CONTENT_TYPE, CSV_CONTENT_TYPE, \
     UnsupportedContentTypeError, UnsupportedAcceptTypeError
 
 from chainer_framework.serialization import csv, npy
 from chainer_framework.serving import model_fn, input_fn, predict_fn, output_fn, transform_fn, NPY_CONTENT_TYPE
+"""
 
-
-@pytest.fixture()
+@pytest.fixture(scope='module')
 def np_array():
     return np.ones((2, 2))
 
 
+@pytest.fixture(scope='module')
+def transformer():
+    serving.ChainerTransformer()
+
+"""
 def fake_predict(x):
     return x * 2
 
@@ -119,3 +127,4 @@ def test_transform_fn_npz(np_array):
     transformed_numpy_array = npy.loads(transformed_data)
     assert np.array_equal(transformed_numpy_array, fake_predict(np_array))
     assert NPY_CONTENT_TYPE == content_type
+"""

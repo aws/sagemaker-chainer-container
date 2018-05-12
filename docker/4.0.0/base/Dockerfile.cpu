@@ -22,12 +22,6 @@ RUN cd /tmp && \
 
 ENV LD_LIBRARY_PATH=/usr/local/openmpi/lib:$LD_LIBRARY_PATH
 
-# install telegraf, used for metrics and benchmark
-RUN cd /tmp && \
-    curl -O https://dl.influxdata.com/telegraf/releases/telegraf_1.4.2-1_amd64.deb && \
-    dpkg -i telegraf_1.4.2-1_amd64.deb && \
-    rm telegraf_1.4.2-1_amd64.deb
-
 # Python won’t try to write .pyc or .pyo files on the import of source modules
 # Force stdin, stdout and stderr to be totally unbuffered. Good for looging
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1

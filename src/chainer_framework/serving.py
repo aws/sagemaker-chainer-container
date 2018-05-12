@@ -1,7 +1,6 @@
 import chainer
 
 from sagemaker_containers import transformers
-from chainer_framework.serialization import npy, csv
 
 
 class ChainerTransformer(transformers.BaseTransformer):
