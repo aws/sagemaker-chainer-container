@@ -54,7 +54,7 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
     # Load all hyperparameters
     batch_size = hyperparameters.get('batch_size', 64)
     epochs = hyperparameters.get('epochs', 20)
-    frequency = hyperparameters.get('frequency', epochs)
+    frequency = epochs
 
     # Create the network
     model = L.Classifier(MLP(1000, 10))
@@ -118,9 +118,6 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
     trainer.extend(extensions.PrintReport(
         ['epoch', 'main/loss', 'validation/main/loss',
          'main/accuracy', 'validation/main/accuracy', 'elapsed_time']))
-
-    # Print a progress bar to stdout
-    trainer.extend(extensions.ProgressBar())
 
     # Run the training
     trainer.run()
