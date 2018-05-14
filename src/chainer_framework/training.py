@@ -17,7 +17,6 @@ from chainer_framework.timeout import timeout
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 _PORT = 7777
 _MPI_SCRIPT = "/mpi_script.sh"
@@ -106,12 +105,7 @@ def _get_master_host_name(hosts):
 def _run_mpi_on_all_nodes(training_environment):
     mpi_command = _get_mpi_command(training_environment)
     logger.info("mpi_command: " + mpi_command)
-    try:
-        result = subprocess.check_call(shlex.split(mpi_command), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        logger.info('mpi command returned: {}'.format(result))
-    except Exception as e:
-        logger.exception('run mpi failed')
-        raise e
+    result = subprocess.check_call(shlex.split(mpi_command), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
 
 def _get_mpi_command(training_environment):
@@ -225,7 +219,7 @@ def _can_connect(host, port, s):
         logger.debug("can connect to host " + host)
         return True
     except socket.error:
-        logger.exception("can't connect to host " + host)
+        logger.debug("can't connect to host " + host)
         return False
 
 
@@ -237,14 +231,12 @@ def _retry_if_false(result):
        wait_fixed=1000,
        retry_on_result=_retry_if_false)
 def _wait_for_mpi_to_start_running():
-    logger.info('mpi start running check')
     return os.path.isfile(_MPI_IS_RUNNING)
 
 
 @retry(wait_fixed=5000,
           retry_on_result=_retry_if_false)
 def _wait_until_mpi_stops_running():
-    logger.info('mpi stop running check')
     return os.path.isfile(_MPI_IS_FINISHED)
 
 
@@ -280,7 +272,6 @@ def main():
 
 # This branch hit by mpi_script.sh (see docker base directory)
 if __name__=='__main__':
-    logger.info('running as script')
     training_env = sagemaker_containers.env.TrainingEnv()
     mod = sagemaker_containers.modules.download_and_import(training_env.module_dir,
                                                            training_env.module_name)

@@ -4,9 +4,9 @@ import time
 import chainermn
 
 
-def train(hyperparameters, num_gpus, current_host, output_data_dir, hosts):
+def train(hyperparameters, num_gpu, current_host, output_data_dir, hosts):
 
-    communicator = hyperparameters.get('communicator', 'naive' if num_gpus == 0 else 'pure_nccl')
+    communicator = hyperparameters.get('communicator', 'naive' if num_gpu == 0 else 'pure_nccl')
     comm = chainermn.create_communicator(communicator)
 
     print('process {} on host {} of {} starting'.format(comm.intra_rank, current_host, len(hosts)))

@@ -67,8 +67,8 @@ def test_chainer_mnist_distributed(docker_image, opt_ml, use_gpu):
     local_mode.train(customer_script, data_dir, docker_image, opt_ml, hyperparameters=hyperparameters,
                      cluster_size=cluster_size, source_dir=mnist_path, use_gpu=use_gpu)
 
-    files = ['model/model.npz', 'output/success', 'output/data/algo-1/accuracy.png',
-             'output/data/algo-1/cg.dot', 'output/data/algo-1/log', 'output/data/algo-1/loss.png']
+    files = ['model/model.npz', 'output/success', 'output/data/accuracy.png',
+             'output/data/cg.dot', 'output/data/log', 'output/data/loss.png']
 
     test_utils.files_exist(opt_ml, files)
     assert not local_mode.file_exists(opt_ml, 'output/failure'), 'Failure happened'
