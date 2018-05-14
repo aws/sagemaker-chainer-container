@@ -336,10 +336,11 @@ def create_docker_services(command, tmpdir, hosts, image, additional_volumes, ad
 
     environment.extend(additional_env_vars)
 
-    return {h: create_docker_host(tmpdir, h, image, environment, optml_dirs, command, additional_volumes, entrypoint)
+    result =  {h: create_docker_host(tmpdir, h, image, environment, optml_dirs, command, additional_volumes, entrypoint)
             for h in
             hosts}
-
+    print('create_docker_services: {}'.format(result))
+    return result
 
 def create_docker_host(tmpdir, host, image, environment, optml_subdirs, command, volumes, entrypoint=None):
     optml_volumes = optml_volumes_list(tmpdir, host, optml_subdirs)
@@ -427,6 +428,8 @@ def create_docker_compose(command, tmpdir, hosts, image, additional_volumes, add
         'version': '2.1',
         'services': services
     }
+
+    print('content: {}'.format(content))
 
     y = yaml.dump(content, default_flow_style=False)
     return y

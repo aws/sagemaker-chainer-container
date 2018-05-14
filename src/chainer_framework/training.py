@@ -6,13 +6,18 @@ import subprocess
 import time
 import traceback
 
-from chainer_framework.timeout import timeout
+from retrying import retry
 from chainer import serializers
 
-from sagemaker_containers import env, functions, modules
+import sagemaker_containers.env
+import sagemaker_containers.functions
+import sagemaker_containers.modules
+
+from chainer_framework.timeout import timeout
+
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 _PORT = 7777
 _MPI_SCRIPT = "/mpi_script.sh"
@@ -60,14 +65,13 @@ def train(user_module, training_environment):
             _wait_for_worker_nodes_to_start_sshd(hosts)
             _run_mpi_on_all_nodes(training_environment)
         else:
-            time.sleep(5)
             _wait_for_training_to_finish(training_environment)
     else:
         _run_training(training_environment, user_module)
 
 
 def _run_training(env, user_module):
-    training_parameters = functions.matching_args(user_module.train, env)
+    training_parameters = sagemaker_containers.functions.matching_args(user_module.train, env)
     logger.info('Invoking user training script.')
     model = user_module.train(**training_parameters)
 
@@ -102,7 +106,12 @@ def _get_master_host_name(hosts):
 def _run_mpi_on_all_nodes(training_environment):
     mpi_command = _get_mpi_command(training_environment)
     logger.info("mpi_command: " + mpi_command)
-    subprocess.check_call(shlex.split(mpi_command))
+    try:
+        result = subprocess.check_call(shlex.split(mpi_command), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        logger.info('mpi command returned: {}'.format(result))
+    except Exception as e:
+        logger.exception('run mpi failed')
+        raise e
 
 
 def _get_mpi_command(training_environment):
@@ -154,8 +163,11 @@ def _get_mpi_command(training_environment):
 
     additional_mpi_options = str(hyperparameters.get('additional_mpi_options', ''))
 
-    # TODO: add this to TrainingEnv
+    credential_vars = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN']
+
+    # TODO: add network_interface_name to TrainingEnv
     network_interface_name = 'eth0'
+
     mpi_command = 'mpirun --allow-run-as-root --host {}'.format(",".join(host_list)) \
                   + " -mca btl_tcp_if_include {}".format(network_interface_name) \
                   + " -mca oob_tcp_if_include {}".format(network_interface_name) \
@@ -167,8 +179,14 @@ def _get_mpi_command(training_environment):
                   + " -x NCCL_DEBUG=INFO" \
                   + " -x NCCL_SOCKET_IFNAME={}".format(network_interface_name) \
                   + " -np {} ".format(num_processes) \
-                  + " {} ".format(additional_mpi_options) \
-                  + " {}".format(_MPI_SCRIPT)
+                  + " --output-filename /opt/ml/output/mpi-out"
+
+    for v in credential_vars:
+        if v in os.environ:
+            mpi_command += " -x {}".format(v) 
+
+    mpi_command += " {} ".format(additional_mpi_options) \
+                 + " {}".format(_MPI_SCRIPT)
     return mpi_command
 
 
@@ -207,7 +225,7 @@ def _can_connect(host, port, s):
         logger.debug("can connect to host " + host)
         return True
     except socket.error:
-        logger.debug("can't connect to host " + host)
+        logger.exception("can't connect to host " + host)
         return False
 
 
@@ -215,16 +233,18 @@ def _retry_if_false(result):
     return result is False
 
 
-# @cs.retry(stop_max_delay=30 * 1000,
-#           wait_fixed=1000,
-#           retry_on_result=_retry_if_false)
+@retry(stop_max_delay=30 * 1000,
+       wait_fixed=1000,
+       retry_on_result=_retry_if_false)
 def _wait_for_mpi_to_start_running():
+    logger.info('mpi start running check')
     return os.path.isfile(_MPI_IS_RUNNING)
 
 
-# @cs.retry(wait_fixed=5000,
-#           retry_on_result=_retry_if_false)
+@retry(wait_fixed=5000,
+          retry_on_result=_retry_if_false)
 def _wait_until_mpi_stops_running():
+    logger.info('mpi stop running check')
     return os.path.isfile(_MPI_IS_FINISHED)
 
 
@@ -242,9 +262,10 @@ def write_failure_file(message, output_dir):
 
 
 def main():
-    training_env = env.TrainingEnv()
+    training_env = sagemaker_containers.env.TrainingEnv()
 
-    mod = modules.download_and_import(training_env.module_dir, training_env.module_name)
+    mod = sagemaker_containers.modules.download_and_import(training_env.module_dir,
+                                                           training_env.module_name)
 
     try:
         train(mod, training_env)
@@ -255,3 +276,12 @@ def main():
         message = 'uncaught exception during training: {}\n{}\n'.format(e, trc)
         logger.error(message)
         write_failure_file(message, training_env.output_dir)
+
+
+# This branch hit by mpi_script.sh (see docker base directory)
+if __name__=='__main__':
+    logger.info('running as script')
+    training_env = sagemaker_containers.env.TrainingEnv()
+    mod = sagemaker_containers.modules.download_and_import(training_env.module_dir,
+                                                           training_env.module_name)
+    _run_training(training_env, mod)
