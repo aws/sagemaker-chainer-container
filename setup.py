@@ -32,7 +32,7 @@ setup(
         'Programming Language :: Python :: 3.5',
     ],
 
-    install_requires=['sagemaker-containers==2.0.0', 'chainer'],
+    install_requires=['sagemaker-containers==2.0.0', 'chainer', 'retrying'],
     dependency_links=['pip install git+https://github.com/mvsusp/sagemaker-containers@r2.0'],
     extras_require={
         'test': ['tox', 'flake8', 'flake8-import-order', 'pytest', 'pytest-cov', 'pytest-xdist', 'mock', 'Flask', 'boto3>=1.4.8',

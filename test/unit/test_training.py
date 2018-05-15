@@ -9,6 +9,7 @@ import chainer
 import chainer.links as L
 from chainer import serializers
 
+import chainer_framework.training
 from chainer_framework.training import _CHANGE_HOSTNAME_LIBRARY, _MPI_IS_RUNNING, _MPI_IS_FINISHED, \
     MODEL_FILE_NAME, train, _change_hostname, _get_master_host_name, _run_training, \
     _run_mpi_on_all_nodes, _get_mpi_command, _start_ssh_daemon, _wait_for_training_to_finish, _default_save, \
@@ -119,11 +120,13 @@ def test_warn_when_no_model_is_saved(single_machine_training_env, user_module, t
         return training_state.model
     user_module.train = user_module_train
 
-    with patch('logging.Logger.warn') as mock:
-        train(user_module, single_machine_training_env)
+    logger_mock = MagicMock(name='logger_mock')
+    chainer_framework.training.logger = logger_mock
 
-        assert training_state.trained
-        mock.assert_called_with("Model object is empty. No model was saved! train() should return a model.")
+    _run_training(single_machine_training_env, user_module)
+
+    assert training_state.trained
+    logger_mock.warning.assert_called_with("Model object is empty. No model was saved! train() should return a model.")
 
 
 def test_distributed_training_save_model_on_master_node(master_node_distributed_training_env, user_module):
@@ -131,7 +134,7 @@ def test_distributed_training_save_model_on_master_node(master_node_distributed_
         training_state.trained = True
         training_state.model = chainer.Chain()
         return training_state.model
-    user_module_with_save.train = user_module_train
+    user_module.train = user_module_train
 
     with patch('chainer_framework.training._default_save') as mock_default_save:
         _run_training(master_node_distributed_training_env, user_module)
@@ -139,7 +142,7 @@ def test_distributed_training_save_model_on_master_node(master_node_distributed_
         mock_default_save.assert_called_once()
 
 
-def test_distributed_training_dont_save_model_on_worker_nodes(worker_node_distributed_training_env, user_module):
+def test_distributed_training_dont_save_model_on_worker_nodes(worker_node_distributed_training_env, user_module_with_save):
     def user_module_train():
         training_state.trained = True
         training_state.model = chainer.Chain()
@@ -147,7 +150,7 @@ def test_distributed_training_dont_save_model_on_worker_nodes(worker_node_distri
     user_module_with_save.train = user_module_train
 
     with patch('chainer_framework.training._default_save') as mock_default_save:
-        _run_training(worker_node_distributed_training_env, user_module)
+        _run_training(worker_node_distributed_training_env, user_module_with_save)
 
         mock_default_save.assert_not_called()
 
@@ -191,9 +194,11 @@ def test_run_mpi_on_all_nodes(master_node_distributed_training_env):
 
 
 def test_get_mpi_command(master_node_distributed_training_env):
+    network_interface_name = 'foonetwork'
+    master_node_distributed_training_env.resource_config = {'network_interface_name': network_interface_name}
+
     mpi_command = _get_mpi_command(master_node_distributed_training_env)
 
-    network_interface_name = master_node_distributed_training_env.network_interface_name
     assert "mpirun" in mpi_command
     assert "--allow-run-as-root" in mpi_command
     assert "-host algo-1,algo-2" in mpi_command
@@ -208,10 +213,9 @@ def test_get_mpi_command(master_node_distributed_training_env):
 
 
 def test_get_mpi_command_with_gpus(master_node_distributed_training_env):
-    master_node_distributed_training_env.available_gpus = 4
+    master_node_distributed_training_env.num_gpu = 4
 
     mpi_command = _get_mpi_command(master_node_distributed_training_env)
-
     assert "algo-1:4,algo-2:4" in mpi_command
 
 
