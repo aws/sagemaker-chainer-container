@@ -17,6 +17,7 @@ from chainer_framework.timeout import timeout
 
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 _PORT = 7777
 _MPI_SCRIPT = "/mpi_script.sh"
@@ -105,7 +106,7 @@ def _get_master_host_name(hosts):
 def _run_mpi_on_all_nodes(training_environment):
     mpi_command = _get_mpi_command(training_environment)
     logger.info("mpi_command: " + mpi_command)
-    result = subprocess.check_call(shlex.split(mpi_command), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    result = subprocess.check_call(shlex.split(mpi_command))
 
 
 def _get_mpi_command(training_environment):
@@ -160,7 +161,8 @@ def _get_mpi_command(training_environment):
     credential_vars = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN']
 
     # TODO: add network_interface_name to TrainingEnv
-    network_interface_name = 'eth0'
+    network_interface_name = training_environment.resource_config.get('network_interface_name', 'ethwe')
+    logger.info('network interface name: {}'.format(network_interface_name))
 
     mpi_command = 'mpirun --allow-run-as-root --host {}'.format(",".join(host_list)) \
                   + " -mca btl_tcp_if_include {}".format(network_interface_name) \
@@ -172,8 +174,7 @@ def _get_mpi_command(training_environment):
                   + " -mca orte_abort_on_non_zero_status 1" \
                   + " -x NCCL_DEBUG=INFO" \
                   + " -x NCCL_SOCKET_IFNAME={}".format(network_interface_name) \
-                  + " -np {} ".format(num_processes) \
-                  + " --output-filename /opt/ml/output/mpi-out"
+                  + " -np {} ".format(num_processes)
 
     for v in credential_vars:
         if v in os.environ:
