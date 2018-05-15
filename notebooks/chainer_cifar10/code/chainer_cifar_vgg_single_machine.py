@@ -27,7 +27,7 @@ from chainer.training import extensions
 import net
 
 
-def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
+def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs, model_dir):
     """
     This function is called by the Chainer container during training when running on SageMaker with
     values populated by the training environment.
@@ -122,7 +122,8 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
 
     # Run the training
     trainer.run()
-
+    
+    serializers.save_npz(os.path.join(model_dir, 'model.npz'), model)
     return model
 
 
@@ -131,9 +132,7 @@ def model_fn(model_dir):
     This function is called by the Chainer container during hosting when running on SageMaker with
     values populated by the hosting environment.
     
-    By default, the Chainer container saves models as .npz files, with the name 'model.npz'. In
-    your training script, you can override this behavior by implementing a function with
-    signature `save(model, model_dir)`.
+    This function loads models written during training into `model_dir`.
 
     Args:
         model_dir (str): path to the directory containing the saved model artifacts
@@ -141,7 +140,7 @@ def model_fn(model_dir):
     Returns:
         a loaded Chainer model
     
-    For more on `model_fn` and `save`, please visit the sagemaker-python-sdk repository:
+    For more on `model_fn`, please visit the sagemaker-python-sdk repository:
     https://github.com/aws/sagemaker-python-sdk
     
     For more on the Chainer container, please visit the sagemaker-chainer-containers repository:
