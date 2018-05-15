@@ -9,5 +9,5 @@ def files_exist(opt_ml, files):
 
 
 def predict_and_assert_response_length(data, content_type):
-    predict_response = localmode.request(data, request_type=content_type)
+    predict_response = localmode.request(data, content_type=content_type)
     assert len(predict_response) == len(data)
