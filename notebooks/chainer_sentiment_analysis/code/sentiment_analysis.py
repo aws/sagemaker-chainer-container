@@ -15,6 +15,7 @@ import os
 import json
 
 import numpy as np
+from six import BytesIO
 import chainer
 from chainer import training
 from chainer import serializers
@@ -27,7 +28,7 @@ from nlp_utils import convert_seq, split_text, normalize_text, transform_to_arra
 # Training methods                                             #
 # ------------------------------------------------------------ #
 
-def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
+def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs, model_dir):
     """
     This function is called by the Chainer container during training when running on SageMaker with
     values populated by the training environment.
@@ -37,6 +38,7 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
         num_gpus (int): number of gpus available to the container, determined by instance type.
         output_data_dir (str): path to the directory to write output artifacts to
         channel_input_dirs (dict): Dictionary mapping input channel names to local filesystem paths
+        model_dir (str): path to the directory to write model artifacts to.
 
     Returns:
         a trained Chainer model
@@ -154,30 +156,19 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs):
 
     # remove the best model from output artifacts (since it will be saved as a model artifact)
     os.remove(os.path.join(output_data_dir, 'best_model.npz'))
+    
+    model_with_vocab_and_setup = (model, vocab, model_setup)
+    
+    save(model_with_vocab_and_setup, model_dir)
+    
     return model, vocab, model_setup
 
 
 def save(model, model_dir):
-    """
-    Writes model artifacts to `model_dir`.
-
-    During hosting, `model_fn` will load these artifacts to reconstruct the model for inference.
-
-    Args:
-        model: the return value of `train` -- in this case, a tuple of the trained model,
-               vocab dict, and model_setup dict.
-        model_dir: the directory to save model artifacts to, the contents of which are tarred,
-               zipped, and uploaded to S3.
-
-    For more on `save`, please visit the sagemaker-python-sdk repository:
-    https://github.com/aws/sagemaker-python-sdk
-
-    For more on the Chainer container, please visit the sagemaker-chainer-containers repository:
-    https://github.com/aws/sagemaker-chainer-containers
-    """
+    
     trained_model, vocab, model_setup = model
-
-    serializers.save_npz(os.path.join(model_dir, 'model.npz'), trained_model)
+    
+    serializers.save_npz(os.path.join(model_dir, 'my_model.npz'), trained_model)
     with open(os.path.join(model_dir, 'vocab.json'), 'w') as f:
         json.dump(vocab, f)
     with open(os.path.join(model_dir, 'args.json'), 'w') as f:
@@ -193,13 +184,8 @@ def model_fn(model_dir):
     """
     This function is called by the Chainer container during hosting when running on SageMaker with
     values populated by the hosting environment.
-
-    Above, we defined a function `save(model, model_dir)`, which saves model artifacts during training.
-    This function loads the model artifacts from the model directory during hosting.
-
-    By default, the Chainer container saves models as .npz files, with the name 'model.npz'. In
-    your training script, you can override this behavior by implementing a function with
-    signature `save(model, model_dir)`.
+    
+    This function loads models written during training into `model_dir`.
 
     Args:
         model_dir (str): path to the directory containing the saved model artifacts
@@ -207,13 +193,13 @@ def model_fn(model_dir):
     Returns:
         a loaded Chainer model
 
-    For more on `model_fn` and `save`, please visit the sagemaker-python-sdk repository:
+    For more on `model_fn`, please visit the sagemaker-python-sdk repository:
     https://github.com/aws/sagemaker-python-sdk
 
     For more on the Chainer container, please visit the sagemaker-chainer-containers repository:
     https://github.com/aws/sagemaker-chainer-containers
     """
-    model_path = os.path.join(model_dir, 'model.npz')
+    model_path = os.path.join(model_dir, 'my_model.npz')
 
     vocab_path = os.path.join(model_dir, 'vocab.json')
     model_setup_path = os.path.join(model_dir, 'args.json')
@@ -241,6 +227,43 @@ def model_fn(model_dir):
     return model, vocab
 
 
+def _npy_loads(data):
+    """
+    Deserializes npy-formatted bytes into a numpy array
+    """
+    stream = BytesIO(data)
+    return np.load(stream)
+
+
+def _npy_dumps(data):
+    """
+    Serialized a numpy array into a stream of npy-formatted bytes.
+    """
+    buffer = BytesIO()
+    np.save(buffer, data)
+    return buffer.getvalue()
+
+
+def input_fn(input_bytes, content_type):
+    """This function is called on the byte stream sent by the client, and is used to deserialize the
+    bytes into a Python object suitable for inference by predict_fn -- in this case, a NumPy array.
+    
+    This implementation is effectively identical to the default implementation used in the Chainer
+    container, for NPY formatted data. This function is included in this script to demonstrate
+    how one might implement `input_fn`.
+
+    Args:
+        input_bytes (numpy array): a numpy array containing the data serialized by the Chainer predictor
+        content_type: the MIME type of the data in input_bytes
+    Returns:
+        a NumPy array represented by input_bytes.
+    """
+    if content_type == 'application/x-npy':
+        return _npy_loads(input_bytes)
+    else:
+        raise ValueError('Content type must be application/x-npy')
+
+
 def predict_fn(input_data, model):
     """
     This function receives a NumPy array and makes a prediction on it using the model returned
@@ -259,7 +282,7 @@ def predict_fn(input_data, model):
     the Chainer predictor can deserialize back into a NumPy array on the client.
 
     Args:
-        input_data (bytes): a numpy array containing the data serialized by the Chainer predictor
+        input_data: a numpy array containing the data serialized by the Chainer predictor
         model: the return value of `model_fn`
     Returns:
         a NumPy array containing predictions which will be returned to the client
@@ -293,3 +316,22 @@ def predict_fn(input_data, model):
 
     return np.array(output)
 
+
+def output_fn(prediction_output, accept):
+    """This function is called on the return value of predict_fn, and is used to serialize the
+    predictions back to the client.
+    
+    This implementation is effectively identical to the default implementation used in the Chainer
+    container, for NPY formatted data. This function is included in this script to demonstrate
+    how one might implement `output_fn`.
+
+    Args:
+        prediction_output (numpy array): a numpy array containing the data serialized by the Chainer predictor
+        accept: the MIME type of the data expected by the client.
+    Returns:
+        a tuple containing a serialized NumPy array and the MIME type of the serialized data.
+    """
+    if accept == 'application/x-npy':
+        return _npy_dumps(prediction_output), 'application/x-npy'
+    else:
+        raise ValueError('Accept header must be application/x-npy')
