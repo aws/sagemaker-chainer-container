@@ -585,7 +585,7 @@ def get_model_dir(resource_folder, host='algo-1'):
 
 def request(data, content_type=content_types.JSON):
     serialized_output = requests.post(REQUEST_URL,
-                                      data=encoders.DefaultEncoder().encode(data, content_type),
+                                      data=encoders.encode(data, content_type),
                                       headers={'Content-type': content_type,
                                                'Accept': content_type}).content
-    return encoders.DefaultDecoder().decode(serialized_output, content_type)
+    return encoders.decode(serialized_output, content_type)

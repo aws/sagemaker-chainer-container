@@ -51,16 +51,16 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb
         return images
 
 
-def train(channel_input_dirs, hyperparameters, num_gpu, output_data_dir, current_host):
+def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir, current_host):
     logger.info('Current host: {}'.format(current_host))
     batch_size = hyperparameters.get('batch_size', 200)
     epochs = hyperparameters.get('epochs', 20)
     frequency = hyperparameters.get('frequency', epochs)
     units = hyperparameters.get('unit', 1000)
-    communicator = 'naive' if num_gpu == 0 else hyperparameters.get('communicator', 'pure_nccl')
+    communicator = 'naive' if num_gpus == 0 else hyperparameters.get('communicator', 'pure_nccl')
 
     comm = chainermn.create_communicator(communicator)
-    device = comm.intra_rank if num_gpu > 0 else -1
+    device = comm.intra_rank if num_gpus > 0 else -1
 
     print('==========================================')
     print('Using {} communicator'.format(comm))

@@ -24,6 +24,7 @@ def master_node_distributed_training_env():
     env.hosts = ['algo-1', 'algo-2']
     env.hyperparameters = {}
     env.network_interface_name = "ethmock"
+    env.num_gpus = 4
     return env
 
 
@@ -33,6 +34,7 @@ def worker_node_distributed_training_env():
     env.current_host = 'algo-2'
     env.hosts = ['algo-1', 'algo-2']
     env.hyperparameters = {}
+    env.num_gpus = 4
     return env
 
 
@@ -45,6 +47,7 @@ def single_machine_training_env():
     tmp = tempfile.mkdtemp()
     os.makedirs(os.path.join(tmp, 'model'))
     env.model_dir = os.path.join(tmp, 'model')
+    env.num_gpus = 1
     return env
 
 
@@ -201,7 +204,7 @@ def test_get_mpi_command(master_node_distributed_training_env):
 
     assert "mpirun" in mpi_command
     assert "--allow-run-as-root" in mpi_command
-    assert "-host algo-1,algo-2" in mpi_command
+    assert "-host algo-1:4,algo-2:4" in mpi_command
     assert "-mca btl_tcp_if_include {}".format(network_interface_name) in mpi_command
     assert "-mca oob_tcp_if_include {}".format(network_interface_name) in mpi_command
     assert "-x PATH" in mpi_command
@@ -209,11 +212,11 @@ def test_get_mpi_command(master_node_distributed_training_env):
     assert "-x LD_PRELOAD={}".format(_CHANGE_HOSTNAME_LIBRARY) in mpi_command
     assert "-mca orte_abort_on_non_zero_status 1" in mpi_command
     assert "-x NCCL_SOCKET_IFNAME={}".format(network_interface_name) in mpi_command
-    assert "-np 2" in mpi_command
+    assert "-np 8" in mpi_command
 
 
 def test_get_mpi_command_with_gpus(master_node_distributed_training_env):
-    master_node_distributed_training_env.num_gpu = 4
+    master_node_distributed_training_env.num_gpus = 4
 
     mpi_command = _get_mpi_command(master_node_distributed_training_env)
     assert "algo-1:4,algo-2:4" in mpi_command

@@ -47,7 +47,7 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb
         return images
 
 
-def train(channel_input_dirs, hyperparameters, num_gpu):
+def train(channel_input_dirs, hyperparameters, num_gpus):
     train_file = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))
     test_file = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))
 
@@ -70,7 +70,7 @@ def train(channel_input_dirs, hyperparameters, num_gpu):
     # iteration, which will be used by the PrintReport extension below.
     model = L.Classifier(MLP(units, 10))
 
-    if num_gpu > 0:
+    if num_gpus > 0:
         chainer.cuda.get_device_from_id(0).use()
         model.to_gpu()  # Copy the model to the GPU
 
@@ -89,7 +89,7 @@ def train(channel_input_dirs, hyperparameters, num_gpu):
     train_count = len(train)
     test_count = len(train)
 
-    device = 0 if num_gpu > 0 else -1  # -1 indicates CPU, 0 indicates first GPU device.
+    device = 0 if num_gpus > 0 else -1  # -1 indicates CPU, 0 indicates first GPU device.
 
     while train_iter.epoch < epochs:
         batch = train_iter.next()

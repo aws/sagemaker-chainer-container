@@ -33,16 +33,16 @@ def _test_mnist(sagemaker_session, ecr_image, instance_type, script_path, instan
         data_path = 'test/resources/mnist/data'
 
         chainer = ChainerTestEstimator(entry_point=script_path, role='SageMakerRole',
-                                train_instance_count=instance_count, train_instance_type=instance_type,
-                                sagemaker_session=sagemaker_session,
-                                docker_image_uri=ecr_image,
-                                hyperparameters={'epochs': 1})
+                                       train_instance_count=instance_count, train_instance_type=instance_type,
+                                       sagemaker_session=sagemaker_session,
+                                       docker_image_uri=ecr_image,
+                                       hyperparameters={'epochs': 1})
 
         prefix = 'chainer_mnist/{}'.format(sagemaker_timestamp())
         train_input = chainer.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
-                                                       key_prefix=prefix + '/train')
+                                                            key_prefix=prefix + '/train')
         test_input = chainer.sagemaker_session.upload_data(path=os.path.join(data_path, 'test'),
-                                                      key_prefix=prefix + '/test')
+                                                           key_prefix=prefix + '/test')
         chainer.fit({'train': train_input, 'test': test_input})
 
     with timeout_and_delete_endpoint(estimator=chainer, minutes=30):

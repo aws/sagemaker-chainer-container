@@ -1,9 +1,5 @@
-import pytest
-import json
 import numpy as np
-
-from chainer import Variable
-
+import pytest
 from chainer_framework import serving
 
 """
@@ -14,6 +10,7 @@ from chainer_framework.serialization import csv, npy
 from chainer_framework.serving import model_fn, input_fn, predict_fn, output_fn, transform_fn, NPY_CONTENT_TYPE
 """
 
+
 @pytest.fixture(scope='module')
 def np_array():
     return np.ones((2, 2))
@@ -22,6 +19,7 @@ def np_array():
 @pytest.fixture(scope='module')
 def transformer():
     serving.ChainerTransformer()
+
 
 """
 def fake_predict(x):

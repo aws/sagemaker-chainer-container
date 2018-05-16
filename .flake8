@@ -1,2 +1,13 @@
 [flake8]
-application_import_names = container_support
+application_import_names = chainer_framework
+import-order-style = google
+max-line-length = 120
+exclude =
+    build/
+    .git
+    __pycache__
+    .tox
+    tests/data/
+    venv/
+    sagemaker-python-sdk-staging/
+max-complexity = 15

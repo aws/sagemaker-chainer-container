@@ -20,7 +20,7 @@ def test_all_processes_finish_with_mpi(docker_image, opt_ml, use_gpu):
                      hyperparameters=hyperparameters, source_dir=resource_path, use_gpu=use_gpu,
                      cluster_size=cluster_size)
 
-    assert local_mode.file_exists(opt_ml, 'output/data/process_could_complete', host='algo-2'), \
+    assert local_mode.file_exists(opt_ml, 'output/data/algo-2/process_could_complete', host='algo-2'), \
         'Model was not saved'
 
 

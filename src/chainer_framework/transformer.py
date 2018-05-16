@@ -47,4 +47,4 @@ def create(model_fn=transformer.default_model_fn,
            predict_fn=default_predict_fn,
            output_fn=default_output_fn):
 
-    return transformer.create(model_fn, input_fn, predict_fn, output_fn)
+    return transformer.T(model_fn, input_fn, predict_fn, output_fn)

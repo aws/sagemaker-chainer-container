@@ -1,7 +1,6 @@
 FROM chainer-base:4.0.0-cpu-py3
 
 ARG framework_installable=dist/sagemaker_chainer_container-1.0-py2.py3-none-any.whl
-ARG support_installable=sagemaker_containers-2.0.0-py2.py3-none-any.whl
 
 RUN rm -f /usr/bin/python && ln -s /usr/bin/python3 /usr/bin/python
 
@@ -14,10 +13,9 @@ RUN pip3 install --no-cache chainer==4.0.0 chainermn==1.2.0 chainercv==0.9.0 \
 RUN sed -i s/TkAgg/Agg/ /usr/local/lib/python3.5/dist-packages/matplotlib/mpl-data/matplotlibrc
 
 COPY $framework_installable /sagemaker_chainer_container-1.0-py2.py3-none-any.whl
-COPY $support_installable /sagemaker_containers-2.0.0-py2.py3-none-any.whl
 
-RUN pip3 install --no-cache /sagemaker_containers-2.0.0-py2.py3-none-any.whl && \
+RUN pip3 install --no-cache git+https://github.com/mvsusp/sagemaker-containers@mvs-backward-compatibility-support && \
     pip3 install --no-cache /sagemaker_chainer_container-1.0-py2.py3-none-any.whl
 
 ENV SAGEMAKER_TRAINING_MODULE chainer_framework.training:main
-ENV SAGEMAKER_SERVING_MODULE chainer_framework.serving:app
+ENV SAGEMAKER_SERVING_MODULE chainer_framework.serving:main

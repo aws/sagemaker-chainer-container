@@ -1,8 +1,5 @@
-import os
 from glob import glob
-from os.path import basename
-from os.path import splitext
-
+import os
 from setuptools import setup, find_packages
 
 
@@ -16,7 +13,7 @@ setup(
     description='Open source library template for creating containers to run on Amazon SageMaker.',
     packages=find_packages(where='src', exclude=('test',)),
     package_dir={'chainer_framework': 'src/chainer_framework'},
-    py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
+    py_modules=[os.splitext(os.basename(path))[0] for path in glob('src/*.py')],
 
     long_description=read('README.rst'),
     author='Amazon Web Services',
@@ -32,10 +29,12 @@ setup(
         'Programming Language :: Python :: 3.5',
     ],
 
-    install_requires=['sagemaker-containers==2.0.0', 'chainer', 'retrying'],
-    dependency_links=['pip install git+https://github.com/mvsusp/sagemaker-containers@r2.0'],
+    install_requires=['sagemaker-containers==2.0.0', 'chainer', 'retrying==1.3.3'],
+    dependency_links=['pip install git+https://github.com/mvsusp/sagemaker-containers'
+                      '@mvs-backward-compatibility-support',
+                      'pip install git+https://github.com/aws/sagemaker-python-sdk-staging'],
     extras_require={
-        'test': ['tox', 'flake8', 'flake8-import-order', 'pytest', 'pytest-cov', 'pytest-xdist', 'mock', 'Flask', 'boto3>=1.4.8',
-                 'docker-compose', 'nvidia-docker-compose', 'sagemaker', 'PyYAML']
+        'test': ['tox', 'flake8', 'flake8-import-order', 'pytest', 'pytest-cov', 'pytest-xdist', 'mock', 'Flask',
+                 'boto3>=1.4.8', 'docker-compose', 'nvidia-docker-compose', 'sagemaker', 'PyYAML']
     }
 )

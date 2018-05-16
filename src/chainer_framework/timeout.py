@@ -1,5 +1,5 @@
-import signal
 from contextlib import contextmanager
+import signal
 
 
 class TimeoutError(Exception):

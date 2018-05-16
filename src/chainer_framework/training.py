@@ -6,9 +6,8 @@ import subprocess
 import time
 import traceback
 
-from retrying import retry
 from chainer import serializers
-
+from retrying import retry
 import sagemaker_containers.env
 import sagemaker_containers.functions
 import sagemaker_containers.modules
@@ -145,9 +144,9 @@ def _get_mpi_command(training_environment):
     Returns:
         str: The mpirun command to run.
     """
-    num_gpus = training_environment.num_gpu
+    num_gpuss = training_environment.num_gpus
     hyperparameters = training_environment.hyperparameters
-    process_slots_per_host = int(hyperparameters.get('process_slots_per_host', num_gpus if num_gpus > 0 else 1))
+    process_slots_per_host = int(hyperparameters.get('process_slots_per_host', num_gpuss if num_gpuss > 0 else 1))
 
     num_hosts = len(training_environment.hosts)
     num_processes = int(hyperparameters.get('num_processes', process_slots_per_host * num_hosts))
