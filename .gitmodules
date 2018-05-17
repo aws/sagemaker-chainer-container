@@ -2,5 +2,3 @@
 	path = sagemaker-python-sdk-staging
 	url = git@github.com:aws/sagemaker-python-sdk-staging.git
 	branch = chainer-estimator
-
-
