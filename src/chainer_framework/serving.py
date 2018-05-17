@@ -55,18 +55,18 @@ def default_output_fn(prediction, accept):
 
 
 def _user_module_transformer(user_module):
+
     model_fn = getattr(user_module, 'model_fn', transformer.default_model_fn)
     input_fn = getattr(user_module, 'input_fn', default_input_fn)
     predict_fn = getattr(user_module, 'predict_fn', default_predict_fn)
     output_fn = getattr(user_module, 'output_fn', default_output_fn)
 
-    return transformer.Transformer(model_fn=model_fn,
-                                   input_fn=input_fn,
-                                   predict_fn=predict_fn,
+    return transformer.Transformer(model_fn=model_fn, input_fn=input_fn, predict_fn=predict_fn,
                                    output_fn=output_fn)
 
 
 def main(environ, start_response):
+
     serving_env = env.ServingEnv()
     user_module = modules.download_and_import(serving_env.module_dir, serving_env.module_name)
 

@@ -44,16 +44,14 @@ class MLP(chainer.Chain):
         return self.l3(h2)
 
 
-def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype,
-                      rgb_format):
+def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb_format):
     images = raw['x']
     if ndim == 2:
         images = images.reshape(-1, 28, 28)
     elif ndim == 3:
         images = images.reshape(-1, 1, 28, 28)
         if rgb_format:
-            images = np.broadcast_to(images,
-                                     (len(images), 3) + images.shape[2:])
+            images = np.broadcast_to(images, (len(images), 3) + images.shape[2:])
     elif ndim != 1:
         raise ValueError('invalid ndim for MNIST dataset')
     images = images.astype(image_dtype)
@@ -65,15 +63,13 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype,
     return images
 
 
-def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir,
-          current_host):
+def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir, current_host):
     logger.info('Current host: {}'.format(current_host))
     batch_size = hyperparameters.get('batch_size', 200)
     epochs = hyperparameters.get('epochs', 20)
     frequency = hyperparameters.get('frequency', epochs)
     units = hyperparameters.get('unit', 1000)
-    communicator = 'naive' if num_gpus == 0 else hyperparameters.get(
-        'communicator', 'pure_nccl')
+    communicator = 'naive' if num_gpus == 0 else hyperparameters.get('communicator', 'pure_nccl')
 
     comm = chainermn.create_communicator(communicator)
     device = comm.intra_rank if num_gpus > 0 else -1
@@ -94,8 +90,7 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir,
         chainer.optimizers.Adam(), comm)
     optimizer.setup(model)
 
-    train_file = np.load(
-        os.path.join(channel_input_dirs['train'], 'train.npz'))
+    train_file = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))
     test_file = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))
 
     preprocess_mnist_options = {

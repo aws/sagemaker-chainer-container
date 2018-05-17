@@ -91,8 +91,8 @@ def opt_ml():
 
     # Docker cannot mount Mac OS /var folder properly see
     # https://forums.docker.com/t/var-folders-isnt-mounted-properly/9600
-    opt_ml_dir = '/private{}'.format(
-        tmp) if platform.system() == 'Darwin' else tmp
+    opt_ml_dir = '/private{}'.format(tmp) if platform.system() == 'Darwin' else tmp
+
     yield opt_ml_dir
 
     shutil.rmtree(tmp, True)
@@ -129,31 +129,27 @@ def fixture_sagemaker_session(region):
 
 
 @pytest.fixture(scope='session', autouse=True, name='build_base_image')
-def fixture_build_base_image(request, framework_version, processor, tag,
-                             docker_base_name):
+def fixture_build_base_image(request, framework_version, processor, tag, docker_base_name):
     build_base_image = request.config.getoption('--build-base-image')
     if build_base_image:
-        return local_mode.build_base_image(
-            framework_name=docker_base_name,
-            framework_version=framework_version,
-            base_image_tag=tag,
-            processor=processor,
-            cwd=os.path.join(dir_path, '..'))
+        return local_mode.build_base_image(framework_name=docker_base_name,
+                                           framework_version=framework_version,
+                                           base_image_tag=tag,
+                                           processor=processor,
+                                           cwd=os.path.join(dir_path, '..'))
 
     return tag
 
 
 @pytest.fixture(scope='session', autouse=True, name='build_image')
-def fixture_build_image(request, py_version, framework_version, processor, tag,
-                        docker_base_name):
+def fixture_build_image(request, py_version, framework_version, processor, tag, docker_base_name):
     build_image = request.config.getoption('--build-image')
     if build_image:
-        return local_mode.build_image(
-            framework_name=docker_base_name,
-            py_version=py_version,
-            framework_version=framework_version,
-            processor=processor,
-            tag=tag,
-            cwd=os.path.join(dir_path, '..'))
+        return local_mode.build_image(framework_name=docker_base_name,
+                                      py_version=py_version,
+                                      framework_version=framework_version,
+                                      processor=processor,
+                                      tag=tag,
+                                      cwd=os.path.join(dir_path, '..'))
 
     return tag

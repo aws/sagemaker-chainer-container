@@ -38,8 +38,7 @@ class MLP(chainer.Chain):
         return self.l3(h2)
 
 
-def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype,
-                      rgb_format):
+def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb_format):
     images = raw['x']
     if ndim == 2:
         images = images.reshape(-1, 28, 28)
@@ -61,8 +60,7 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype,
 
 
 def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
-    train_file = np.load(
-        os.path.join(channel_input_dirs['train'], 'train.npz'))
+    train_file = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))
     test_file = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))
 
     preprocess_mnist_options = {
@@ -96,8 +94,7 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
 
     # Load the MNIST dataset
     train_iter = chainer.iterators.SerialIterator(train, batch_size)
-    test_iter = chainer.iterators.SerialIterator(
-        test, batch_size, repeat=False, shuffle=False)
+    test_iter = chainer.iterators.SerialIterator(test, batch_size, repeat=False, shuffle=False)
 
     # Set up a trainer
     device = 0 if num_gpus > 0 else -1  # -1 indicates CPU, 0 indicates first GPU device.
@@ -110,10 +107,10 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
             devices={('main' if device == 0 else str(device)): device
                      for device in range(num_gpus)})
     else:
-        updater = training.updater.StandardUpdater(
-            train_iter, optimizer, device=device)
+        updater = training.updater.StandardUpdater(train_iter, optimizer, device=device)
 
-    # Write output files to output_data_dir. These are zipped and uploaded to S3 output path as output.tar.gz.
+    # Write output files to output_data_dir. These are zipped and uploaded to S3 output path as
+    # output.tar.gz.
     trainer = training.Trainer(updater, (epochs, 'epoch'), out=output_data_dir)
 
     # Evaluate the model with the test dataset for each epoch
@@ -133,15 +130,12 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
     # Save two plot images to the result dir
     if extensions.PlotReport.available():
         trainer.extend(
-            extensions.PlotReport(
-                ['main/loss', 'validation/main/loss'],
-                'epoch',
-                file_name='loss.png'))
+            extensions.PlotReport(['main/loss', 'validation/main/loss'],
+                                  'epoch', file_name='loss.png'))
         trainer.extend(
             extensions.PlotReport(
                 ['main/accuracy', 'validation/main/accuracy'],
-                'epoch',
-                file_name='accuracy.png'))
+                'epoch', file_name='accuracy.png'))
 
     # Print selected entries of the log to stdout
     # Here "main" refers to the target link of the "main" optimizer again, and

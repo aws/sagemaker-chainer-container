@@ -33,26 +33,28 @@ def _test_mnist(sagemaker_session, ecr_image, instance_type, script_path, instan
     with timeout(minutes=15):
         data_path = 'test/resources/mnist/data'
 
-        chainer = ChainerTestEstimator(
-            entry_point=script_path,
-            role='SageMakerRole',
-            train_instance_count=instance_count,
-            train_instance_type=instance_type,
-            sagemaker_session=sagemaker_session,
-            docker_image_uri=ecr_image,
-            hyperparameters={'epochs': 1})
+        chainer = ChainerTestEstimator(entry_point=script_path,
+                                       role='SageMakerRole',
+                                       train_instance_count=instance_count,
+                                       train_instance_type=instance_type,
+                                       sagemaker_session=sagemaker_session,
+                                       docker_image_uri=ecr_image,
+                                       hyperparameters={'epochs': 1})
 
         prefix = 'chainer_mnist/{}'.format(sagemaker_timestamp())
-        train_input = chainer.sagemaker_session.upload_data(
-            path=os.path.join(data_path, 'train'),
-            key_prefix=prefix + '/train')
-        test_input = chainer.sagemaker_session.upload_data(
-            path=os.path.join(data_path, 'test'), key_prefix=prefix + '/test')
+
+        train_data_path = os.path.join(data_path, 'train')
+
+        key_prefix = prefix + '/train'
+        train_input = sagemaker_session.upload_data(path=train_data_path, key_prefix=key_prefix)
+
+        test_path = os.path.join(data_path, 'test')
+        test_input = sagemaker_session.upload_data(path=test_path, key_prefix=prefix + '/test')
+
         chainer.fit({'train': train_input, 'test': test_input})
 
     with timeout_and_delete_endpoint(estimator=chainer, minutes=30):
-        predictor = chainer.deploy(
-            initial_instance_count=1, instance_type=instance_type)
+        predictor = chainer.deploy(initial_instance_count=1, instance_type=instance_type)
 
         batch_size = 100
         data = np.zeros(shape=(batch_size, 1, 28, 28), dtype='float32')
