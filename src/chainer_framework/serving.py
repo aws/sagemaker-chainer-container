@@ -39,9 +39,34 @@ def default_predict_fn(data, model):
         return predicted_data.data
 
 
-default_output_fn = transformer.default_output_fn
+def default_output_fn(prediction, accept):
+    """Function responsible to serialize the prediction for the response.
 
-default_model_fn = transformer.default_model_fn
+    Args:
+        prediction (obj): prediction returned by predict_fn .
+        accept (str): accept content-type expected by the client.
+
+    Returns:
+        (worker.Response): a Flask response object with the following args:
+
+            * Args:
+                response: the serialized data to return
+                accept: the content-type that the data was transformed to.
+    """
+    return transformer.default_output_fn(prediction, accept)
+
+
+def default_model_fn(model_dir):
+    """Function responsible to load the model.
+        For more information about model loading https://github.com/aws/sagemaker-python-sdk#model-loading.
+
+    Args:
+        model_dir (str): The directory where model files are stored.
+
+    Returns:
+        (obj) the loaded model.
+    """
+    return transformer.default_model_fn(model_dir)
 
 
 def _user_module_transformer(user_module):
@@ -62,5 +87,6 @@ def main(environ, start_response):
 
     user_module_transformer.initialize()
 
-    app = worker.Worker(transform_fn=user_module_transformer.transform, module_name='fake_ml_model')
+    app = worker.Worker(transform_fn=user_module_transformer.transform,
+                        module_name=serving_env.module_name)
     return app(environ, start_response)

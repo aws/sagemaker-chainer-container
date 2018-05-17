@@ -84,10 +84,6 @@ def _run_training(env, user_module):
     user_module.train(**training_parameters)
 
 
-def _default_save(env, model):
-    serializers.save_npz(os.path.join(env.model_dir, MODEL_FILE_NAME), model)
-
-
 def _change_hostname(current_host):
     """Compiles a shared library to correct the behavior of the gethostname system call,
         which OpenMPI depends on.

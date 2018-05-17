@@ -134,7 +134,7 @@ def train(channel_input_dirs, hyperparameters, num_gpus, model_dir):
             sum_accuracy = 0
             sum_loss = 0
 
-        serializers.save_npz(os.path.join(model_dir, 'model.npz'), model)
+    serializers.save_npz(os.path.join(model_dir, 'model.npz'), model)
     return model
 
 
