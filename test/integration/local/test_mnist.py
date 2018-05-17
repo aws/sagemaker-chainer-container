@@ -17,8 +17,8 @@ def test_chainer_mnist_single_machine(docker_image, opt_ml, use_gpu):
     local_mode.train(customer_script, data_dir, docker_image, opt_ml,
                      hyperparameters=hyperparameters, source_dir=mnist_path, use_gpu=use_gpu)
 
-    files = ['model/model.npz', 'output/success', 'output/data/accuracy.png',
-             'output/data/cg.dot', 'output/data/log', 'output/data/loss.png']
+    files = ['model/model.npz', 'output/success', 'output/data/algo-1/accuracy.png',
+             'output/data/algo-1/cg.dot', 'output/data/algo-1/log', 'output/data/algo-1/loss.png']
 
     test_utils.files_exist(opt_ml, files)
 
