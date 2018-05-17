@@ -22,6 +22,23 @@ logger.setLevel(logging.DEBUG)
 
 
 def default_input_fn(input_data, content_type):
+    """Takes request data and de-serializes the data into an object for prediction.
+
+        When an InvokeEndpoint operation is made against an Endpoint running SageMaker model server,
+        the model server receives two pieces of information:
+
+            - The request Content-Type, for example "application/json"
+            - The request data, which is at most 5 MB (5 * 1024 * 1024 bytes) in size.
+
+        The input_fn is responsible to take the request data and pre-process it before prediction.
+
+    Args:
+        input_data (obj): the request data.
+        content_type (str): the request Content-Type.
+
+    Returns:
+        (obj): data ready for prediction.
+    """
     np_array = encoders.decode(input_data, content_type)
     return np_array.astype(np.float32) if content_type in content_types.UTF8_TYPES else np_array
 
@@ -54,7 +71,7 @@ def default_output_fn(prediction, accept):
                 response: the serialized data to return
                 accept: the content-type that the data was transformed to.
     """
-    return transformer.default_output_fn(prediction, accept)
+    return worker.Response(encoders.encode(prediction, accept), accept)
 
 
 def default_model_fn(model_dir):
