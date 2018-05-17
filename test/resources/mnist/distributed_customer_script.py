@@ -1,16 +1,16 @@
 from __future__ import print_function
 
-import os
 import logging
+import os
 
-import numpy as np
 import chainer
 import chainer.functions as F
 import chainer.links as L
 import chainermn
+import numpy as np
 from chainer import serializers, training
-from chainer.training import extensions
 from chainer.datasets import tuple_dataset
+from chainer.training import extensions
 
 logger = logging.getLogger('user_script')
 logger.setLevel(logging.INFO)

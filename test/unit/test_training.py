@@ -1,20 +1,22 @@
 import os
-import tempfile
-import pytest
 import shlex
 import socket
-from mock import MagicMock, patch, call
+import tempfile
 
 import chainer
 import chainer.links as L
+import pytest
 from chainer import serializers
+from mock import MagicMock, patch, call
 
 import chainer_framework.training
+from chainer_framework.timeout import TimeoutError
 from chainer_framework.training import _CHANGE_HOSTNAME_LIBRARY, _MPI_IS_RUNNING, _MPI_IS_FINISHED, \
     MODEL_FILE_NAME, train, _change_hostname, _get_master_host_name, _run_training, \
-    _run_mpi_on_all_nodes, _get_mpi_command, _start_ssh_daemon, _wait_for_training_to_finish, _default_save, \
-    _wait_for_worker_nodes_to_start_sshd, _can_connect, _wait_for_mpi_to_start_running, _wait_until_mpi_stops_running
-from chainer_framework.timeout import TimeoutError
+    _run_mpi_on_all_nodes, _get_mpi_command, _start_ssh_daemon, _wait_for_training_to_finish, \
+    _default_save, \
+    _wait_for_worker_nodes_to_start_sshd, _can_connect, _wait_for_mpi_to_start_running, \
+    _wait_until_mpi_stops_running
 
 
 @pytest.fixture()
@@ -178,10 +180,10 @@ def test_distributed_training_dont_save_model_on_worker_nodes(
 def test_distributed_training_from_master_node(
         master_node_distributed_training_env, user_module):
     with patch('chainer_framework.training._change_hostname') as mock_change_hostname, \
-         patch('chainer_framework.training._start_ssh_daemon') as mock_start_ssh_daemon, \
-         patch('chainer_framework.training._wait_for_worker_nodes_to_start_sshd') as mock_wait_for_sshd, \
-         patch ('chainer_framework.training._run_mpi_on_all_nodes') as mock_run_mpi_on_all_nodes:
-
+            patch('chainer_framework.training._start_ssh_daemon') as mock_start_ssh_daemon, \
+            patch(
+                'chainer_framework.training._wait_for_worker_nodes_to_start_sshd') as mock_wait_for_sshd, \
+            patch('chainer_framework.training._run_mpi_on_all_nodes') as mock_run_mpi_on_all_nodes:
         train(user_module, master_node_distributed_training_env)
 
         mock_change_hostname.assert_called_once_with(
@@ -196,9 +198,9 @@ def test_distributed_training_from_master_node(
 def test_distributed_training_from_worker_node(
         worker_node_distributed_training_env, user_module):
     with patch('chainer_framework.training._change_hostname') as mock_change_hostname, \
-         patch('chainer_framework.training._start_ssh_daemon') as mock_start_ssh_daemon, \
-         patch('chainer_framework.training._wait_for_training_to_finish') as mock_wait_for_training_to_finish:
-
+            patch('chainer_framework.training._start_ssh_daemon') as mock_start_ssh_daemon, \
+            patch(
+                'chainer_framework.training._wait_for_training_to_finish') as mock_wait_for_training_to_finish:
         train(user_module, worker_node_distributed_training_env)
 
         mock_change_hostname.assert_called_once_with(
@@ -286,16 +288,16 @@ def test_get_mpi_command_with_additional_mpi_options(
 
 def test_start_ssh_daemon():
     with patch('subprocess.Popen') as mock_popen:
-
         _start_ssh_daemon()
 
         mock_popen.assert_called_with(["/usr/sbin/sshd", "-D"])
 
 
 def test_wait_for_training_to_finish(worker_node_distributed_training_env):
-    with patch('chainer_framework.training._wait_for_mpi_to_start_running') as mock_wait_for_mpi_to_start_running, \
-         patch('chainer_framework.training._wait_until_mpi_stops_running') as mock_wait_until_mpi_stops_running:
-
+    with patch(
+            'chainer_framework.training._wait_for_mpi_to_start_running') as mock_wait_for_mpi_to_start_running, \
+            patch(
+                'chainer_framework.training._wait_until_mpi_stops_running') as mock_wait_until_mpi_stops_running:
         _wait_for_training_to_finish(worker_node_distributed_training_env)
 
         mock_wait_for_mpi_to_start_running.assert_called_once()
@@ -362,7 +364,6 @@ def test_wait_for_worker_nodes_to_start_sshd_timeout(
 
 
 def test_get_master_host_name(master_node_distributed_training_env):
-
     master_host_name = _get_master_host_name(
         master_node_distributed_training_env.hosts)
 

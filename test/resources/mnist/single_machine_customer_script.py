@@ -2,13 +2,13 @@ from __future__ import print_function
 
 import os
 
-import numpy as np
 import chainer
 import chainer.functions as F
 import chainer.links as L
+import numpy as np
 from chainer import training, serializers
-from chainer.training import extensions
 from chainer.datasets import tuple_dataset
+from chainer.training import extensions
 
 
 class MLP(chainer.Chain):

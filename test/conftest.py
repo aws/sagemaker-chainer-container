@@ -6,7 +6,6 @@ import tempfile
 
 import boto3
 import pytest
-
 from sagemaker import Session
 
 from test.utils import local_mode
@@ -35,40 +34,41 @@ def pytest_addoption(parser):
     parser.addoption('--tag', default=None)
 
 
-@pytest.fixture(scope='session')
-def docker_base_name(request):
+# pylint: disable=unused-argument
+@pytest.fixture(scope='session', name='docker_base_name')
+def fixture_docker_base_name(request):
     return request.config.getoption('--docker-base-name')
 
 
-@pytest.fixture(scope='session')
-def region(request):
+@pytest.fixture(scope='session', name='region')
+def fixture_region(request):
     return request.config.getoption('--region')
 
 
-@pytest.fixture(scope='session')
-def framework_version(request):
+@pytest.fixture(scope='session', name='framework_version')
+def fixture_framework_version(request):
     return request.config.getoption('--framework-version')
 
 
-@pytest.fixture(scope='session')
-def py_version(request):
+@pytest.fixture(scope='session', name='py_version')
+def fixture_py_version(request):
     return 'py{}'.format(int(request.config.getoption('--py-version')))
 
 
-@pytest.fixture(scope='session')
-def processor(request):
+@pytest.fixture(scope='session', name='processor')
+def fixture_processor(request):
     return request.config.getoption('--processor')
 
 
-@pytest.fixture(scope='session')
-def tag(request, framework_version, processor, py_version):
+@pytest.fixture(scope='session', name='tag')
+def _fixture_tag(request, framework_version, processor, py_version):
     provided_tag = request.config.getoption('--tag')
     default_tag = '{}-{}-{}'.format(framework_version, processor, py_version)
     return provided_tag if provided_tag else default_tag
 
 
-@pytest.fixture(scope='session')
-def docker_image(docker_base_name, tag):
+@pytest.fixture(scope='session', name='docker_image')
+def fixture_docker_image(docker_base_name, tag):
     return '{}:{}'.format(docker_base_name, tag)
 
 
@@ -83,44 +83,42 @@ def opt_ml():
         tmp) if platform.system() == 'Darwin' else tmp
     yield opt_ml_dir
 
-    print('----------------------------------------------')
-    print(opt_ml_dir)
-    # shutil.rmtree(tmp, True)
+    shutil.rmtree(tmp, True)
 
 
-@pytest.fixture(scope='session')
-def use_gpu(processor):
+@pytest.fixture(scope='session', name='use_gpu')
+def fixture_use_gpu(processor):
     return processor == 'gpu'
 
 
-@pytest.fixture(scope='session')
-def aws_id(request):
+@pytest.fixture(scope='session', name='aws_id')
+def fixture_aws_id(request):
     return request.config.getoption('--aws-id')
 
 
-@pytest.fixture(scope='session')
-def instance_type(request):
+@pytest.fixture(scope='session', name='instance_type')
+def fixture_instance_type(request):
     return request.config.getoption('--instance-type')
 
 
-@pytest.fixture(scope='session')
-def docker_registry(aws_id, region):
+@pytest.fixture(scope='session', name='docker_registry')
+def fixture_docker_registry(aws_id, region):
     return '{}.dkr.ecr.{}.amazonaws.com'.format(aws_id, region)
 
 
-@pytest.fixture(scope='session')
-def ecr_image(docker_registry, docker_base_name, tag):
-    return '369233609183.dkr.ecr.us-west-2.amazonaws.com/chainer:4.0.0-gpu-py3'
+@pytest.fixture(scope='session', name='ecr_image')
+def fixture_ecr_image(docker_registry, docker_base_name, tag):
+    return '369233609183.dkr.ecr.us-west-2.amazonaws.com/chainer:4.0.0-gpu-py2'
 
 
-@pytest.fixture(scope='session')
-def sagemaker_session(region):
+@pytest.fixture(scope='session', name='sagemaker_session')
+def fixture_sagemaker_session(region):
     return Session(boto_session=boto3.Session(region_name=region))
 
 
-@pytest.fixture(scope='session', autouse=True)
-def build_base_image(request, framework_version, processor, tag,
-                     docker_base_name):
+@pytest.fixture(scope='session', autouse=True, name='build_base_image')
+def fixture_build_base_image(request, framework_version, processor, tag,
+                             docker_base_name):
     build_base_image = request.config.getoption('--build-base-image')
     if build_base_image:
         return local_mode.build_base_image(
@@ -133,9 +131,9 @@ def build_base_image(request, framework_version, processor, tag,
     return tag
 
 
-@pytest.fixture(scope='session', autouse=True)
-def build_image(request, py_version, framework_version, processor, tag,
-                docker_base_name):
+@pytest.fixture(scope='session', autouse=True, name='build_image')
+def fixture_build_image(request, py_version, framework_version, processor, tag,
+                        docker_base_name):
     build_image = request.config.getoption('--build-image')
     if build_image:
         return local_mode.build_image(

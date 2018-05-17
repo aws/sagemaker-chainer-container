@@ -1,6 +1,5 @@
-import mpi4py.MPI
-
 import chainermn
+import mpi4py.MPI
 
 
 def train():

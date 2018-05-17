@@ -7,12 +7,11 @@ import sys
 import tarfile
 import tempfile
 from time import sleep
-import yaml
 
 import boto3
-from botocore.exceptions import ClientError
 import requests
-
+import yaml
+from botocore.exceptions import ClientError
 from sagemaker import fw_utils
 from sagemaker_containers import content_types, encoders
 
@@ -307,9 +306,9 @@ def create_training(data_dir,
             directory=source_dir)[0]
         hyperparameters.update({
             'sagemaker_submit_directory':
-            s3_script_path,
+                s3_script_path,
             'sagemaker_program':
-            os.path.basename(customer_script)
+                os.path.basename(customer_script)
         })
 
     for host in hosts:

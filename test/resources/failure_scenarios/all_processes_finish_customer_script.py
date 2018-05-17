@@ -5,7 +5,6 @@ import chainermn
 
 
 def train(hyperparameters, num_gpus, current_host, output_data_dir, hosts):
-
     communicator = hyperparameters.get(
         'communicator', 'naive' if num_gpus == 0 else 'pure_nccl')
     comm = chainermn.create_communicator(communicator)

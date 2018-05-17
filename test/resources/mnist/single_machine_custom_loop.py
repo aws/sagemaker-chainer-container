@@ -2,10 +2,10 @@ from __future__ import print_function
 
 import os
 
-import numpy as np
 import chainer
 import chainer.functions as F
 import chainer.links as L
+import numpy as np
 from chainer import serializers
 from chainer.dataset import convert
 from chainer.datasets import tuple_dataset

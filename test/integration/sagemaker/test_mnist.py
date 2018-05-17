@@ -11,11 +11,13 @@
 #  express or implied. See the License for the specific language governing
 #  permissions and limitations under the License.
 
+import os
+
+import numpy as np
 from estimator import ChainerTestEstimator
 from sagemaker.utils import sagemaker_timestamp
+
 from timeout import timeout, timeout_and_delete_endpoint
-import numpy as np
-import os
 
 
 def test_chainer_mnist_single_machine(sagemaker_session, ecr_image,

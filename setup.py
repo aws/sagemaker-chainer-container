@@ -28,8 +28,8 @@ setup(
     ],
     install_requires=['sagemaker-containers==2.0.0', 'chainer', 'retrying==1.3.3'],
     dependency_links=[
-        'pip install git+https://github.com/mvsusp/sagemaker-containers'
-        '@mvs-backward-compatibility-support',
+        'pip install git+https://github.com/aws/sagemaker-containers'
+        '@r2.0',
         'pip install git+https://github.com/aws/sagemaker-python-sdk-staging'
     ],
     extras_require={

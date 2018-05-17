@@ -5,7 +5,6 @@ import tempfile
 
 import pytest
 from mock import MagicMock
-
 from sagemaker_containers import env
 
 INPUT_DATA_CONFIG = {

@@ -1,6 +1,8 @@
 import numpy as np
 import pytest
+
 from chainer_framework import serving
+
 """
 from container_support.serving import JSON_CONTENT_TYPE, CSV_CONTENT_TYPE, \
     UnsupportedContentTypeError, UnsupportedAcceptTypeError
