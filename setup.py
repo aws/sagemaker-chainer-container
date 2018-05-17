@@ -1,6 +1,7 @@
-from glob import glob
 import os
-from setuptools import setup, find_packages
+from glob import glob
+
+from setuptools import find_packages, setup
 
 
 def read(fname):
@@ -11,7 +12,7 @@ setup(
     name='sagemaker-chainer-container',
     version='1.0',
     description='Open source library template for creating containers to run on Amazon SageMaker.',
-    packages=find_packages(where='src', exclude=('test', )),
+    packages=find_packages(where='src', exclude='test'),
     package_dir={'chainer_framework': 'src/chainer_framework'},
     py_modules=[os.splitext(os.basename(path))[0] for path in glob('src/*.py')],
     long_description=read('README.rst'),
@@ -26,7 +27,7 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.5',
     ],
-    install_requires=['sagemaker-containers==2.0.0', 'chainer', 'retrying==1.3.3'],
+    install_requires=['sagemaker-containers==2.0.0', 'chainer', 'retrying==1.3.3', 'numpy'],
     dependency_links=[
         'pip install git+https://github.com/aws/sagemaker-containers'
         '@r2.0',

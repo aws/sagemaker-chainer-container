@@ -24,38 +24,34 @@ HYPERPARAMETERS = {
 }
 
 
-@pytest.fixture()
-def training_env():
+@pytest.fixture(name='training_env')
+def fixture_training_env():
     return MagicMock()
 
 
-@pytest.fixture()
-def training_state():
+@pytest.fixture(name='training_state')
+def fixture_training_state():
     training_state = MagicMock()
     training_state.trained = False
     training_state.saved = False
     return training_state
 
 
-@pytest.fixture()
-def user_module():
+@pytest.fixture(name='user_module')
+def fixture_user_module():
     return MagicMock(spec=['train'])
 
 
-@pytest.fixture()
-def user_module_with_save():
+@pytest.fixture(name='user_module_with_save')
+def fixture_user_module_with_save():
     return MagicMock(spec=['train', 'save'])
 
 
-@pytest.fixture()
-def training_structure():
+@pytest.fixture(name='training_structure')
+def fixture_training_structure():
     d = _setup_training_structure()
     yield d
     shutil.rmtree(d)
-
-
-def test_train(training_env, user_module_with_save, training_state):
-    pass
 
 
 def _write_config_file(path, filename, data):

@@ -14,9 +14,9 @@
 import os
 
 import numpy as np
-from estimator import ChainerTestEstimator
 from sagemaker.utils import sagemaker_timestamp
 
+from estimator import ChainerTestEstimator
 from timeout import timeout, timeout_and_delete_endpoint
 
 

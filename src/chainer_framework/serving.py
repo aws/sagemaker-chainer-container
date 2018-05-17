@@ -55,17 +55,15 @@ def default_output_fn(prediction, accept):
 
 
 def _user_module_transformer(user_module):
-    fns = {
-        'model_fn': None,
-        'input_fn': default_input_fn,
-        'predict_fn': default_predict_fn,
-        'output_fn': default_output_fn
-    }
-    for f in fns:
-        if hasattr(user_module, f):
-            fns[f] = getattr(user_module, f)
-    logger.debug('fns: %s', fns)
-    return transformer.Transformer(**fns)
+    model_fn = getattr(user_module, 'model_fn', transformer.default_model_fn)
+    input_fn = getattr(user_module, 'input_fn', default_input_fn)
+    predict_fn = getattr(user_module, 'predict_fn', default_predict_fn)
+    output_fn = getattr(user_module, 'output_fn', default_output_fn)
+
+    return transformer.Transformer(model_fn=model_fn,
+                                   input_fn=input_fn,
+                                   predict_fn=predict_fn,
+                                   output_fn=output_fn)
 
 
 def main(environ, start_response):

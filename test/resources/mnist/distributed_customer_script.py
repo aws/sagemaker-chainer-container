@@ -6,11 +6,12 @@ import os
 import chainer
 import chainer.functions as F
 import chainer.links as L
-import chainermn
 import numpy as np
 from chainer import serializers, training
 from chainer.datasets import tuple_dataset
 from chainer.training import extensions
+
+import chainermn
 
 logger = logging.getLogger('user_script')
 logger.setLevel(logging.INFO)
@@ -49,8 +50,7 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype,
     if withlabel:
         labels = raw['y'].astype(label_dtype)
         return tuple_dataset.TupleDataset(images, labels)
-    else:
-        return images
+    return images
 
 
 def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir,
@@ -95,12 +95,12 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir,
         'rgb_format': False
     }
 
-    train = _preprocess_mnist(train_file, **preprocess_mnist_options)
-    test = _preprocess_mnist(test_file, **preprocess_mnist_options)
+    train_dataset = _preprocess_mnist(train_file, **preprocess_mnist_options)
+    test_dataset = _preprocess_mnist(test_file, **preprocess_mnist_options)
 
-    train_iter = chainer.iterators.SerialIterator(train, batch_size)
+    train_iter = chainer.iterators.SerialIterator(train_dataset, batch_size)
     test_iter = chainer.iterators.SerialIterator(
-        test, batch_size, repeat=False, shuffle=False)
+        test_dataset, batch_size, repeat=False, shuffle=False)
 
     updater = training.StandardUpdater(train_iter, optimizer, device=device)
     trainer = training.Trainer(updater, (epochs, 'epoch'), out=output_data_dir)

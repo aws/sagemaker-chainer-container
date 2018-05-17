@@ -3,7 +3,7 @@ from __future__ import print_function
 import chainermn
 
 
-def train(hyperparameters, num_gpus, hosts, current_host):
+def train(hyperparameters, num_gpus, hosts, current_host):  # pylint: disable=unused-argument
     if len(hosts) == 1:
         raise Exception('Exception on a single machine')
 

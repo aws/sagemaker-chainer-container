@@ -19,10 +19,6 @@ from botocore.exceptions import ClientError
 LOGGER = logging.getLogger('timeout')
 
 
-class TimeoutError(Exception):
-    pass
-
-
 @contextmanager
 def timeout(seconds=0, minutes=0, hours=0):
     """Add a signal-based timeout to any block of code.

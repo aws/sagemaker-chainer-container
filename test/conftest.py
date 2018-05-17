@@ -3,12 +3,11 @@ import os
 import platform
 import shutil
 import tempfile
+from test.utils import local_mode
 
 import boto3
 import pytest
 from sagemaker import Session
-
-from test.utils import local_mode
 
 logger = logging.getLogger(__name__)
 logging.getLogger('boto').setLevel(logging.INFO)

@@ -6,7 +6,7 @@ import chainer
 import chainer.functions as F
 import chainer.links as L
 import numpy as np
-from chainer import training, serializers
+from chainer import serializers, training
 from chainer.datasets import tuple_dataset
 from chainer.training import extensions
 
