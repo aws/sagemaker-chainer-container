@@ -69,6 +69,6 @@ def test_distributed_failure(docker_image, opt_ml, use_gpu):
 
     local_mode.train(customer_script, resource_path, docker_image, opt_ml,
                      hyperparameters=hyperparameters, source_dir=resource_path,
-                    use_gpu=use_gpu, cluster_size=cluster_size)
+                     use_gpu=use_gpu, cluster_size=cluster_size)
 
     assert local_mode.file_exists(opt_ml, 'output/failure'), 'Failure did not happen'

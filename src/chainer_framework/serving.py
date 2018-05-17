@@ -15,14 +15,15 @@ import logging
 
 import chainer
 import numpy as np
-from sagemaker_containers import encoders, env, modules, transformer, worker
+from sagemaker_containers import content_types, encoders, env, modules, transformer, worker
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
 def default_input_fn(input_data, content_type):
-    return encoders.decode(input_data, content_type).astype(np.float32)
+    np_array = encoders.decode(input_data, content_type)
+    return np_array.astype(np.float32) if content_type in content_types.UTF8_TYPES else np_array
 
 
 def default_predict_fn(data, model):

@@ -18,7 +18,6 @@ import subprocess
 import time
 import traceback
 
-from chainer import serializers
 from retrying import retry
 from sagemaker_containers import env, functions, modules
 

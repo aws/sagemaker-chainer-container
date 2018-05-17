@@ -16,7 +16,6 @@ import socket
 import tempfile
 
 import chainer
-from chainer import serializers
 import chainer.links as L
 from mock import call, MagicMock, patch
 import pytest
