@@ -38,28 +38,45 @@ DEFAULT_HOSTING_ENV = [
 ]
 
 
-def build_base_image(framework_name, framework_version, processor, base_image_tag, cwd='.'):
+def build_base_image(framework_name,
+                     framework_version,
+                     processor,
+                     base_image_tag,
+                     cwd='.'):
     base_image_uri = get_base_image_uri(framework_name, base_image_tag)
 
-    dockerfile_location = os.path.join('docker', framework_version, 'base', 'Dockerfile.{}'.format(processor))
+    dockerfile_location = os.path.join('docker', framework_version, 'base',
+                                       'Dockerfile.{}'.format(processor))
 
     build_directory = os.path.dirname(dockerfile_location)
 
-    subprocess.check_call(['docker', 'build', '-t', base_image_uri, '-f', dockerfile_location, build_directory],
-                          cwd=cwd)
+    subprocess.check_call(
+        [
+            'docker', 'build', '-t', base_image_uri, '-f', dockerfile_location,
+            build_directory
+        ],
+        cwd=cwd)
     print('created image {}'.format(base_image_uri))
     return base_image_uri
 
 
-def build_image(py_version, framework_name, framework_version, processor, tag, cwd='.'):
+def build_image(py_version,
+                framework_name,
+                framework_version,
+                processor,
+                tag,
+                cwd='.'):
     check_call('python setup.py bdist_wheel')
 
     image_uri = get_image_uri(framework_name, tag)
 
-    dockerfile_location = os.path.join('docker', framework_version, 'final', py_version,
+    dockerfile_location = os.path.join('docker', framework_version, 'final',
+                                       py_version,
                                        'Dockerfile.{}'.format(processor))
 
-    subprocess.check_call(['docker', 'build', '-t', image_uri, '-f', dockerfile_location, '.'], cwd=cwd)
+    subprocess.check_call(
+        ['docker', 'build', '-t', image_uri, '-f', dockerfile_location, '.'],
+        cwd=cwd)
     print('created image {}'.format(image_uri))
     return image_uri
 
@@ -73,21 +90,24 @@ def get_image_uri(framework_name, tag):
 
 
 def create_config_files(program, s3_source_archive, path, additional_hp={}):
-    rc = {
-        "current_host": "algo-1",
-        "hosts": ["algo-1"]
-    }
+    rc = {"current_host": "algo-1", "hosts": ["algo-1"]}
 
-    hp = {'sagemaker_region': 'us-west-2',
-          'sagemaker_program': program,
-          'sagemaker_submit_directory': s3_source_archive,
-          'sagemaker_container_log_level': logging.INFO}
+    hp = {
+        'sagemaker_region': 'us-west-2',
+        'sagemaker_program': program,
+        'sagemaker_submit_directory': s3_source_archive,
+        'sagemaker_container_log_level': logging.INFO
+    }
 
     hp.update(additional_hp)
 
     ic = {
-        "training": {"ContentType": "trainingContentType"},
-        "evaluation": {"ContentType": "evalContentType"},
+        "training": {
+            "ContentType": "trainingContentType"
+        },
+        "evaluation": {
+            "ContentType": "evalContentType"
+        },
         "Validation": {}
     }
 
@@ -117,25 +137,59 @@ def save_as_json(data, filename):
         json.dump(data, f)
 
 
-def train(customer_script, data_dir, image_name, opt_ml, cluster_size=1, hyperparameters={}, additional_volumes=[],
-          additional_env_vars=[], use_gpu=False, entrypoint=None, source_dir=None):
-    tmpdir = create_training(data_dir, customer_script, opt_ml, image_name, additional_volumes, additional_env_vars,
-                             hyperparameters, cluster_size, entrypoint=entrypoint, source_dir=source_dir)
+def train(customer_script,
+          data_dir,
+          image_name,
+          opt_ml,
+          cluster_size=1,
+          hyperparameters={},
+          additional_volumes=[],
+          additional_env_vars=[],
+          use_gpu=False,
+          entrypoint=None,
+          source_dir=None):
+    tmpdir = create_training(
+        data_dir,
+        customer_script,
+        opt_ml,
+        image_name,
+        additional_volumes,
+        additional_env_vars,
+        hyperparameters,
+        cluster_size,
+        entrypoint=entrypoint,
+        source_dir=source_dir)
     command = create_docker_command(tmpdir, use_gpu)
     start_docker(tmpdir, command)
     purge()
 
 
-def serve(customer_script, model_dir, image_name, opt_ml, cluster_size=1, additional_volumes=[],
-          additional_env_vars=[], use_gpu=False, entrypoint=None, source_dir=None):
-    tmpdir = create_hosting_dir(model_dir, customer_script, opt_ml, image_name, additional_volumes, additional_env_vars,
+def serve(customer_script,
+          model_dir,
+          image_name,
+          opt_ml,
+          cluster_size=1,
+          additional_volumes=[],
+          additional_env_vars=[],
+          use_gpu=False,
+          entrypoint=None,
+          source_dir=None):
+    tmpdir = create_hosting_dir(model_dir, customer_script, opt_ml, image_name,
+                                additional_volumes, additional_env_vars,
                                 cluster_size, source_dir, entrypoint)
     command = create_docker_command(tmpdir, use_gpu)
     return Container(tmpdir, command)
 
 
-def create_hosting_dir(model_dir, customer_script, optml, image, additional_volumes, additional_env_vars,
-                       cluster_size=1, source_dir=None, entrypoint=None):
+def create_hosting_dir(model_dir,
+                       customer_script,
+                       optml,
+                       image,
+                       additional_volumes,
+                       additional_env_vars,
+                       cluster_size=1,
+                       source_dir=None,
+                       entrypoint=None):
     tmpdir = os.path.abspath(optml)
     print('creating hosting dir in {}'.format(tmpdir))
 
@@ -148,10 +202,12 @@ def create_hosting_dir(model_dir, customer_script, optml, image, additional_volu
             os.makedirs(host_dir)
             shutil.copytree(model_dir, os.path.join(tmpdir, h, 'model'))
 
-    write_docker_file('serve', tmpdir, hosts, image, additional_volumes, additional_env_vars, customer_script,
-                      source_dir, entrypoint)
+    write_docker_file('serve', tmpdir, hosts, image, additional_volumes,
+                      additional_env_vars, customer_script, source_dir,
+                      entrypoint)
 
-    print("hosting dir: \n{}".format(str(subprocess.check_output(['ls', '-lR', tmpdir]).decode('utf-8'))))
+    print("hosting dir: \n{}".format(
+        str(subprocess.check_output(['ls', '-lR', tmpdir]).decode('utf-8'))))
 
     return tmpdir
 
@@ -172,7 +228,8 @@ def chain_docker_cmds(cmd, cmd2):
 
     if any(docker_tags):
         try:
-            subprocess.check_output(cmd2.split(' ') + docker_tags, stderr=subprocess.STDOUT)
+            subprocess.check_output(
+                cmd2.split(' ') + docker_tags, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError:
             pass
 
@@ -211,11 +268,8 @@ def create_docker_command(tmpdir, use_gpu=False, detached=False):
     compose_cmd = 'nvidia-docker-compose' if use_gpu else 'docker-compose'
 
     command = [
-        compose_cmd,
-        '-f',
-        os.path.join(tmpdir, DOCKER_COMPOSE_FILENAME),
-        'up',
-        '--build'
+        compose_cmd, '-f',
+        os.path.join(tmpdir, DOCKER_COMPOSE_FILENAME), 'up', '--build'
     ]
 
     if detached:
@@ -225,8 +279,16 @@ def create_docker_command(tmpdir, use_gpu=False, detached=False):
     return command
 
 
-def create_training(data_dir, customer_script, optml, image, additional_volumes, additional_env_vars,
-                    additional_hps={}, cluster_size=1, source_dir=None, entrypoint=None):
+def create_training(data_dir,
+                    customer_script,
+                    optml,
+                    image,
+                    additional_volumes,
+                    additional_env_vars,
+                    additional_hps={},
+                    cluster_size=1,
+                    source_dir=None,
+                    entrypoint=None):
     session = boto3.Session()
     tmpdir = os.path.abspath(optml)
 
@@ -237,14 +299,17 @@ def create_training(data_dir, customer_script, optml, image, additional_volumes,
     hyperparameters = read_hyperparameters(additional_hps)
 
     if customer_script:
-        s3_script_path = fw_utils.tar_and_upload_dir(session=session,
-                                                     bucket=default_bucket(session),
-                                                     s3_key_prefix='test',
-                                                     script=customer_script,
-                                                     directory=source_dir)[0]
+        s3_script_path = fw_utils.tar_and_upload_dir(
+            session=session,
+            bucket=default_bucket(session),
+            s3_key_prefix='test',
+            script=customer_script,
+            directory=source_dir)[0]
         hyperparameters.update({
-            'sagemaker_submit_directory': s3_script_path,
-            'sagemaker_program': os.path.basename(customer_script)
+            'sagemaker_submit_directory':
+            s3_script_path,
+            'sagemaker_program':
+            os.path.basename(customer_script)
         })
 
     for host in hosts:
@@ -257,22 +322,26 @@ def create_training(data_dir, customer_script, optml, image, additional_volumes,
 
         shutil.copytree(data_dir, os.path.join(tmpdir, host, 'input', 'data'))
 
-    write_docker_file('train', tmpdir, hosts, image, additional_volumes, additional_env_vars, customer_script,
-                      source_dir, entrypoint)
+    write_docker_file('train', tmpdir, hosts, image, additional_volumes,
+                      additional_env_vars, customer_script, source_dir,
+                      entrypoint)
 
-    print("training dir: \n{}".format(str(subprocess.check_output(['ls', '-lR', tmpdir]).decode('utf-8'))))
+    print("training dir: \n{}".format(
+        str(subprocess.check_output(['ls', '-lR', tmpdir]).decode('utf-8'))))
 
     return tmpdir
 
 
 def write_inputdataconfig(path, current_host, inputdataconfig):
-    filename = os.path.join(path, current_host, 'input', 'config', 'inputdataconfig.json')
+    filename = os.path.join(path, current_host, 'input', 'config',
+                            'inputdataconfig.json')
     write_json_file(filename, inputdataconfig)
 
 
 def write_hyperparameters(path, current_host, hyperparameters):
     serialized = {k: json.dumps(v) for k, v in hyperparameters.items()}
-    filename = os.path.join(path, current_host, 'input', 'config', 'hyperparameters.json')
+    filename = os.path.join(path, current_host, 'input', 'config',
+                            'hyperparameters.json')
     write_json_file(filename, serialized)
 
 
@@ -295,10 +364,12 @@ def create_input_data_config(data_path):
     return config
 
 
-def write_docker_file(command, tmpdir, hosts, image, additional_volumes, additional_env_vars, customer_script,
-                      source_dir, entrypoint):
+def write_docker_file(command, tmpdir, hosts, image, additional_volumes,
+                      additional_env_vars, customer_script, source_dir,
+                      entrypoint):
     filename = os.path.join(tmpdir, DOCKER_COMPOSE_FILENAME)
-    content = create_docker_compose(command, tmpdir, hosts, image, additional_volumes, additional_env_vars,
+    content = create_docker_compose(command, tmpdir, hosts, image,
+                                    additional_volumes, additional_env_vars,
                                     customer_script, source_dir, entrypoint)
 
     print('docker compose file: \n{}'.format(content))
@@ -306,8 +377,9 @@ def write_docker_file(command, tmpdir, hosts, image, additional_volumes, additio
         f.write(content)
 
 
-def create_docker_services(command, tmpdir, hosts, image, additional_volumes, additional_env_vars, customer_script,
-                           source_dir, entrypoint):
+def create_docker_services(command, tmpdir, hosts, image, additional_volumes,
+                           additional_env_vars, customer_script, source_dir,
+                           entrypoint):
     environment = []
     session = boto3.Session()
 
@@ -319,14 +391,16 @@ def create_docker_services(command, tmpdir, hosts, image, additional_volumes, ad
         environment.extend(DEFAULT_HOSTING_ENV)
 
         if customer_script:
-            s3_script_path = fw_utils.tar_and_upload_dir(session=session,
-                                                         bucket=default_bucket(session),
-                                                         s3_key_prefix='test',
-                                                         script=customer_script,
-                                                         directory=source_dir)[0]
+            s3_script_path = fw_utils.tar_and_upload_dir(
+                session=session,
+                bucket=default_bucket(session),
+                s3_key_prefix='test',
+                script=customer_script,
+                directory=source_dir)[0]
 
             environment.extend([
-                'SAGEMAKER_PROGRAM={}'.format(os.path.basename(customer_script)),
+                'SAGEMAKER_PROGRAM={}'.format(
+                    os.path.basename(customer_script)),
                 'SAGEMAKER_SUBMIT_DIRECTORY={}'.format(s3_script_path)
             ])
     else:
@@ -336,16 +410,27 @@ def create_docker_services(command, tmpdir, hosts, image, additional_volumes, ad
 
     environment.extend(additional_env_vars)
 
-    result = {h: create_docker_host(tmpdir, h, image, environment, optml_dirs, command, additional_volumes, entrypoint)
-              for h in
-              hosts}
+    result = {
+        h: create_docker_host(tmpdir, h, image, environment, optml_dirs,
+                              command, additional_volumes, entrypoint)
+        for h in hosts
+    }
     print('create_docker_services: {}'.format(result))
     return result
 
 
-def create_docker_host(tmpdir, host, image, environment, optml_subdirs, command, volumes, entrypoint=None):
+def create_docker_host(tmpdir,
+                       host,
+                       image,
+                       environment,
+                       optml_subdirs,
+                       command,
+                       volumes,
+                       entrypoint=None):
     optml_volumes = optml_volumes_list(tmpdir, host, optml_subdirs)
-    optml_volumes = ['/private' + v if v.startswith('/var') else v for v in optml_volumes]
+    optml_volumes = [
+        '/private' + v if v.startswith('/var') else v for v in optml_volumes
+    ]
     optml_volumes.extend(volumes)
 
     host_config = {
@@ -361,11 +446,7 @@ def create_docker_host(tmpdir, host, image, environment, optml_subdirs, command,
         host_config['entrypoint'] = entrypoint
 
     if command == 'serve':
-        host_config.update({
-            'ports': [
-                '8080:8080'
-            ]
-        })
+        host_config.update({'ports': ['8080:8080']})
 
     return host_config
 
@@ -387,7 +468,8 @@ def optml_volumes_list(opt_root_folder, host, subdirs, single_model_dir=False):
 
     # If it is single mode dir we want to map the same model dir and share between hosts
     if single_model_dir:
-        volumes_map.append('{}:/opt/ml/model'.format(os.path.join(opt_root_folder, 'algo-1/model')))
+        volumes_map.append('{}:/opt/ml/model'.format(
+            os.path.join(opt_root_folder, 'algo-1/model')))
     else:
         # else we want to add model to the list of subdirs so it will be created for each container.
         subdirs.add('model')
@@ -409,10 +491,10 @@ def credentials_to_env(session):
         credentials_list = [
             'AWS_ACCESS_KEY_ID=%s' % (str(access_key)),
             'AWS_SECRET_ACCESS_KEY=%s' % (str(secret_key))
-
         ]
         if session_token:
-            credentials_list.append('AWS_SESSION_TOKEN=%s' % (str(session_token)))
+            credentials_list.append(
+                'AWS_SESSION_TOKEN=%s' % (str(session_token)))
         return credentials_list
     except Exception as e:
         print('Could not get AWS creds: %s' % e)
@@ -420,9 +502,11 @@ def credentials_to_env(session):
     return []
 
 
-def create_docker_compose(command, tmpdir, hosts, image, additional_volumes, additional_env_vars, customer_script,
-                          source_dir, entrypoint):
-    services = create_docker_services(command, tmpdir, hosts, image, additional_volumes, additional_env_vars,
+def create_docker_compose(command, tmpdir, hosts, image, additional_volumes,
+                          additional_env_vars, customer_script, source_dir,
+                          entrypoint):
+    services = create_docker_services(command, tmpdir, hosts, image,
+                                      additional_volumes, additional_env_vars,
                                       customer_script, source_dir, entrypoint)
     content = {
         # docker version on ACC hosts only supports compose 2.1 format
@@ -445,7 +529,8 @@ def write_resource_config(path, hosts, current_host):
         'network_interface_name': 'eth0'
     }
 
-    filename = os.path.join(path, current_host, 'input', 'config', 'resourceconfig.json')
+    filename = os.path.join(path, current_host, 'input', 'config',
+                            'resourceconfig.json')
     write_json_file(filename, content)
 
 
@@ -455,7 +540,10 @@ def write_json_file(filename, content):
 
 
 def create_host_names(cluster_size):
-    return ['{}-{}'.format(CONTAINER_PREFIX, i) for i in range(1, cluster_size + 1)]
+    return [
+        '{}-{}'.format(CONTAINER_PREFIX, i)
+        for i in range(1, cluster_size + 1)
+    ]
 
 
 def check_call(cmd, *popenargs, **kwargs):
@@ -466,25 +554,23 @@ def check_call(cmd, *popenargs, **kwargs):
 
 
 def _print_cmd(cmd):
-    print('executing docker command: {}{}{}'.format(CYAN_COLOR, ' '.join(cmd), END_COLOR))
+    print('executing docker command: {}{}{}'.format(CYAN_COLOR, ' '.join(cmd),
+                                                    END_COLOR))
     sys.stdout.flush()
 
 
 def upload_source_files(script, credentials, path=None, job_name='test_job'):
     session = _boto_session(credentials)
     bucket = default_bucket(session)
-    s3_source_archive = tar_and_upload_dir(
-        session,
-        bucket,
-        job_name,
-        script,
-        path)
+    s3_source_archive = tar_and_upload_dir(session, bucket, job_name, script,
+                                           path)
     return s3_source_archive
 
 
 def _boto_session(credentials):
-    return boto3.Session(aws_access_key_id=credentials['AWS_ACCESS_KEY_ID'],
-                         aws_secret_access_key=credentials['AWS_SECRET_ACCESS_KEY'])
+    return boto3.Session(
+        aws_access_key_id=credentials['AWS_ACCESS_KEY_ID'],
+        aws_secret_access_key=credentials['AWS_SECRET_ACCESS_KEY'])
 
 
 def default_bucket(boto_session):
@@ -507,7 +593,9 @@ def default_bucket(boto_session):
             if region == 'us-east-1':
                 s3.create_bucket(Bucket=bucket)
             else:
-                s3.create_bucket(Bucket=bucket, CreateBucketConfiguration={'LocationConstraint': region})
+                s3.create_bucket(
+                    Bucket=bucket,
+                    CreateBucketConfiguration={'LocationConstraint': region})
 
             print('Created S3 bucket: {}'.format(bucket))
         except ClientError as e:
@@ -525,8 +613,12 @@ def tar_and_upload_dir(session, bucket, job_name, script, directory):
         if not os.path.isdir(directory):
             raise ValueError('"{}" is not a directory.'.format(directory))
         if script not in os.listdir(directory):
-            raise ValueError('No file named "{}" was found in directory "{}".'.format(script, directory))
-        source_files = [os.path.join(directory, name) for name in os.listdir(directory)]
+            raise ValueError(
+                'No file named "{}" was found in directory "{}".'.format(
+                    script, directory))
+        source_files = [
+            os.path.join(directory, name) for name in os.listdir(directory)
+        ]
     else:
         # If no directory is specified, the script parameter needs to be a valid relative path.
         os.path.exists(script)
@@ -563,11 +655,16 @@ def bucket_exists(boto_session, bucket_name):
     return exists
 
 
-def copy_resource(resource_path, opt_ml_path, relative_src_path, relative_dst_path=None):
+def copy_resource(resource_path,
+                  opt_ml_path,
+                  relative_src_path,
+                  relative_dst_path=None):
     if not relative_dst_path:
         relative_dst_path = relative_src_path
 
-    shutil.copytree(os.path.join(resource_path, relative_src_path), os.path.join(opt_ml_path, relative_dst_path))
+    shutil.copytree(
+        os.path.join(resource_path, relative_src_path),
+        os.path.join(opt_ml_path, relative_dst_path))
 
 
 def file_exists(resource_folder, file_name, host='algo-1'):

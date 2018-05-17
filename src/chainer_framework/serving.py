@@ -1,3 +1,16 @@
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+
 import logging
 
 import chainer
@@ -42,14 +55,16 @@ def default_output_fn(prediction, accept):
 
 
 def _user_module_transformer(user_module):
-    fns = {'model_fn': None,
-           'input_fn': default_input_fn,
-           'predict_fn': default_predict_fn,
-           'output_fn': default_output_fn}
-    for f in fns.keys():
+    fns = {
+        'model_fn': None,
+        'input_fn': default_input_fn,
+        'predict_fn': default_predict_fn,
+        'output_fn': default_output_fn
+    }
+    for f in fns:
         if hasattr(user_module, f):
             fns[f] = getattr(user_module, f)
-    logger.debug('fns: {}'.format(fns))
+    logger.debug('fns: %s', fns)
     return transformer.Transformer(**fns)
 
 
@@ -61,4 +76,5 @@ def main(environ, start_response):
 
     trans.initialize()
 
-    return worker.Worker(transform_fn=trans.transform, module_name='fake_ml_model')(environ, start_response)
+    return worker.Worker(
+        transform_fn=trans.transform, module_name='fake_ml_model')(environ, start_response)

@@ -12,7 +12,6 @@ from chainer.datasets import tuple_dataset
 
 
 class MLP(chainer.Chain):
-
     def __init__(self, n_units, n_out):
         super(MLP, self).__init__()
         with self.init_scope():
@@ -27,14 +26,16 @@ class MLP(chainer.Chain):
         return self.l3(h2)
 
 
-def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb_format):
+def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype,
+                      rgb_format):
     images = raw['x']
     if ndim == 2:
         images = images.reshape(-1, 28, 28)
     elif ndim == 3:
         images = images.reshape(-1, 1, 28, 28)
         if rgb_format:
-            images = np.broadcast_to(images, (len(images), 3) + images.shape[2:])
+            images = np.broadcast_to(images,
+                                     (len(images), 3) + images.shape[2:])
     elif ndim != 1:
         raise ValueError('invalid ndim for MNIST dataset')
     images = images.astype(image_dtype)
@@ -48,15 +49,18 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb
 
 
 def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
-    train_file = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))
+    train_file = np.load(
+        os.path.join(channel_input_dirs['train'], 'train.npz'))
     test_file = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))
 
-    preprocess_mnist_options = {'withlabel': True,
-                                'ndim': 1,
-                                'scale': 1.,
-                                'image_dtype': np.float32,
-                                'label_dtype': np.int32,
-                                'rgb_format': False}
+    preprocess_mnist_options = {
+        'withlabel': True,
+        'ndim': 1,
+        'scale': 1.,
+        'image_dtype': np.float32,
+        'label_dtype': np.int32,
+        'rgb_format': False
+    }
 
     train = _preprocess_mnist(train_file, **preprocess_mnist_options)
     test = _preprocess_mnist(test_file, **preprocess_mnist_options)
@@ -80,8 +84,8 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
 
     # Load the MNIST dataset
     train_iter = chainer.iterators.SerialIterator(train, batch_size)
-    test_iter = chainer.iterators.SerialIterator(test, batch_size,
-                                                 repeat=False, shuffle=False)
+    test_iter = chainer.iterators.SerialIterator(
+        test, batch_size, repeat=False, shuffle=False)
 
     # Set up a trainer
     device = 0 if num_gpus > 0 else -1  # -1 indicates CPU, 0 indicates first GPU device.
@@ -91,9 +95,11 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
             optimizer,
             # The device of the name 'main' is used as a "master", while others are
             # used as slaves. Names other than 'main' are arbitrary.
-            devices={('main' if device == 0 else str(device)): device for device in range(num_gpus)})
+            devices={('main' if device == 0 else str(device)): device
+                     for device in range(num_gpus)})
     else:
-        updater = training.updater.StandardUpdater(train_iter, optimizer, device=device)
+        updater = training.updater.StandardUpdater(
+            train_iter, optimizer, device=device)
 
     # Write output files to output_data_dir. These are zipped and uploaded to S3 output path as output.tar.gz.
     trainer = training.Trainer(updater, (epochs, 'epoch'), out=output_data_dir)
@@ -115,21 +121,26 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
     # Save two plot images to the result dir
     if extensions.PlotReport.available():
         trainer.extend(
-            extensions.PlotReport(['main/loss', 'validation/main/loss'],
-                                  'epoch', file_name='loss.png'))
+            extensions.PlotReport(
+                ['main/loss', 'validation/main/loss'],
+                'epoch',
+                file_name='loss.png'))
         trainer.extend(
             extensions.PlotReport(
                 ['main/accuracy', 'validation/main/accuracy'],
-                'epoch', file_name='accuracy.png'))
+                'epoch',
+                file_name='accuracy.png'))
 
     # Print selected entries of the log to stdout
     # Here "main" refers to the target link of the "main" optimizer again, and
     # "validation" refers to the default name of the Evaluator extension.
     # Entries other than 'epoch' are reported by the Classifier link, called by
     # either the updater or the evaluator.
-    trainer.extend(extensions.PrintReport(
-        ['epoch', 'main/loss', 'validation/main/loss',
-         'main/accuracy', 'validation/main/accuracy', 'elapsed_time']))
+    trainer.extend(
+        extensions.PrintReport([
+            'epoch', 'main/loss', 'validation/main/loss', 'main/accuracy',
+            'validation/main/accuracy', 'elapsed_time'
+        ]))
 
     # Print a progress bar to stdout
     trainer.extend(extensions.ProgressBar())

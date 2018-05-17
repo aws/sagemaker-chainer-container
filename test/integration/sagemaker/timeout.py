@@ -70,7 +70,11 @@ def timeout_and_delete_endpoint(estimator, seconds=0, minutes=0, hours=0):
 
 
 @contextmanager
-def timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, seconds=0, minutes=0, hours=0):
+def timeout_and_delete_endpoint_by_name(endpoint_name,
+                                        sagemaker_session,
+                                        seconds=0,
+                                        minutes=0,
+                                        hours=0):
     with timeout(seconds=seconds, minutes=minutes, hours=hours) as t:
         try:
             yield [t]

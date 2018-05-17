@@ -12,7 +12,6 @@ from chainer.datasets import tuple_dataset
 
 
 class MLP(chainer.Chain):
-
     def __init__(self, n_units, n_out):
         super(MLP, self).__init__()
         with self.init_scope():
@@ -27,14 +26,16 @@ class MLP(chainer.Chain):
         return self.l3(h2)
 
 
-def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb_format):
+def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype,
+                      rgb_format):
     images = raw['x']
     if ndim == 2:
         images = images.reshape(-1, 28, 28)
     elif ndim == 3:
         images = images.reshape(-1, 1, 28, 28)
         if rgb_format:
-            images = np.broadcast_to(images, (len(images), 3) + images.shape[2:])
+            images = np.broadcast_to(images,
+                                     (len(images), 3) + images.shape[2:])
     elif ndim != 1:
         raise ValueError('invalid ndim for MNIST dataset')
     images = images.astype(image_dtype)
@@ -48,15 +49,18 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb
 
 
 def train(channel_input_dirs, hyperparameters, num_gpus):
-    train_file = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))
+    train_file = np.load(
+        os.path.join(channel_input_dirs['train'], 'train.npz'))
     test_file = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))
 
-    preprocess_mnist_options = {'withlabel': True,
-                                'ndim': 1,
-                                'scale': 1.,
-                                'image_dtype': np.float32,
-                                'label_dtype': np.int32,
-                                'rgb_format': False}
+    preprocess_mnist_options = {
+        'withlabel': True,
+        'ndim': 1,
+        'scale': 1.,
+        'image_dtype': np.float32,
+        'label_dtype': np.int32,
+        'rgb_format': False
+    }
 
     train = _preprocess_mnist(train_file, **preprocess_mnist_options)
     test = _preprocess_mnist(test_file, **preprocess_mnist_options)
@@ -80,8 +84,8 @@ def train(channel_input_dirs, hyperparameters, num_gpus):
 
     # Load the MNIST dataset
     train_iter = chainer.iterators.SerialIterator(train, batch_size)
-    test_iter = chainer.iterators.SerialIterator(test, batch_size,
-                                                 repeat=False, shuffle=False)
+    test_iter = chainer.iterators.SerialIterator(
+        test, batch_size, repeat=False, shuffle=False)
 
     sum_accuracy = 0
     sum_loss = 0

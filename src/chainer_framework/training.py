@@ -1,3 +1,15 @@
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
 import logging
 import os
 import shlex
@@ -13,7 +25,6 @@ import sagemaker_containers.functions
 import sagemaker_containers.modules
 
 from chainer_framework.timeout import timeout
-
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -37,8 +48,8 @@ def train(user_module, training_environment):
     If the environment contains multiple hosts, then a distributed learning
     task is started with mpirun.
 
-    The following is a list of other hyperparameters that can be used to change training behavior. None of these
-    hyperparameters are required:
+    The following is a list of other hyperparameters that can be used to change training behavior.
+    None of these hyperparameters are required:
 
     * `use_mpi`: force use of MPI so that ChainerMN scripts can be run on a single host.
     * `process_slots_per_host`: the number of process slots per host.
@@ -53,7 +64,9 @@ def train(user_module, training_environment):
                                training arguments and hyperparameters
     """
 
-    use_mpi = bool(training_environment.hyperparameters.get('use_mpi', len(training_environment.hosts) > 1))
+    use_mpi = bool(
+        training_environment.hyperparameters.get('use_mpi',
+                                                 len(training_environment.hosts) > 1))
 
     if use_mpi:
         current_host = training_environment.current_host
@@ -104,37 +117,40 @@ def _get_master_host_name(hosts):
 
 def _run_mpi_on_all_nodes(training_environment):
     mpi_command = _get_mpi_command(training_environment)
-    logger.info("mpi_command: " + mpi_command)
-    result = subprocess.check_call(shlex.split(mpi_command))
+    logger.info("mpi_command: %s", mpi_command)
+    subprocess.check_call(shlex.split(mpi_command))
 
 
 def _get_mpi_command(training_environment):
     """Constructs a command to run distributed training with MPI using mpirun.
 
-    Runs /mpi_script.sh on all hosts listed in the training environment. How many processes in total is determined
-    by the 'num_processes' hyperparameter, or one per GPU, or one per CPU, as applicable. The 'process_slots_per_host'
+    Runs /mpi_script.sh on all hosts listed in the training environment. How many
+    processes in total is determined by the 'num_processes' hyperparameter, or one
+    per GPU, or one per CPU, as applicable. The 'process_slots_per_host'
     hyperparameter can be used to override how many processes can be placed on each host.
 
-    Additional MPI options can be passed (and override other MPI options) using the 'additional_mpi_options'
-    hyperparameter.
+    Additional MPI options can be passed (and override other MPI options) using the
+    'additional_mpi_options' hyperparameter.
 
     This command passes many options to the mpirun command:
 
-    * --host [host:slots]: A comma-delimited list of hosts and the number of process slots on each host.
-    * -mca btl_tcp_if_include [network_interface_name]: Tell OpenMPI to use the given network interface name for
-         byte transfer layer communication.
-    * -mca oob_tcp_if_include [network_interface_name]: Tell OpenMPI to use the given network interface name for
-         out-of-band communication.
+    * --host [host:slots]: A comma-delimited list of hosts and the number of process
+        slots on each host.
+    * -mca btl_tcp_if_include [network_interface_name]: Tell OpenMPI to use the given network
+        interface name for byte transfer layer communication.
+    * -mca oob_tcp_if_include [network_interface_name]: Tell OpenMPI to use the given network
+        interface name for out-of-band communication.
     * -mca btl ^openib: Don't look for openib components (this just avoids a warning)
     * -x PATH: pass $PATH from the current environment to the execution environments on remote hosts
-    * -x LD_LIBRARY_PATH: pass $LD_LIBRARY_PATH from the current environment to the execution environments on remote
-         hosts
-    * -x LD_PRELOAD=[changehostname library]: Load the changehostname library to return correct values from gethostname
-         system calls.
-    * -mca orte_abort_on_non_zero_status 1: Return a non-zero exit code if any process exits with a non-zero exit code.
+    * -x LD_LIBRARY_PATH: pass $LD_LIBRARY_PATH from the current environment to the execution
+        environments on remote hosts
+    * -x LD_PRELOAD=[changehostname library]: Load the changehostname library to return
+        correct values from gethostname system calls.
+    * -mca orte_abort_on_non_zero_status 1: Return a non-zero exit code if any process exits
+        with a non-zero exit code.
     * -x NCCL_DEBUG=INFO: Enable info level logging for NCCL.
-    * -x NCCL_SOCKET_IFNAME=[network_interface_name]: Tell NCCL to use the given network interface name for socket
-         communication.
+    * -x NCCL_SOCKET_IFNAME=[network_interface_name]: Tell NCCL to use the given network
+        interface name for socket communication.
     * -np [num_processes]: total number of processes to run across all nodes.
 
     Args:
@@ -146,7 +162,8 @@ def _get_mpi_command(training_environment):
     """
     num_gpuss = training_environment.num_gpus
     hyperparameters = training_environment.hyperparameters
-    process_slots_per_host = int(hyperparameters.get('process_slots_per_host', num_gpuss if num_gpuss > 0 else 1))
+    process_slots_per_host = int(
+        hyperparameters.get('process_slots_per_host', num_gpuss if num_gpuss > 0 else 1))
 
     num_hosts = len(training_environment.hosts)
     num_processes = int(hyperparameters.get('num_processes', process_slots_per_host * num_hosts))
@@ -160,8 +177,9 @@ def _get_mpi_command(training_environment):
     credential_vars = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN']
 
     # TODO: add network_interface_name to TrainingEnv
-    network_interface_name = training_environment.resource_config.get('network_interface_name', 'ethwe')
-    logger.info('network interface name: {}'.format(network_interface_name))
+    network_interface_name = training_environment.resource_config.get('network_interface_name',
+                                                                      'ethwe')
+    logger.info('network interface name: %s', network_interface_name)
 
     mpi_command = 'mpirun --allow-run-as-root --host {}'.format(",".join(host_list)) \
                   + " -mca btl_tcp_if_include {}".format(network_interface_name) \
@@ -177,7 +195,7 @@ def _get_mpi_command(training_environment):
 
     for v in credential_vars:
         if v in os.environ:
-            mpi_command += " -x {}".format(v) 
+            mpi_command += " -x {}".format(v)
 
     mpi_command += " {} ".format(additional_mpi_options) \
                  + " {}".format(_MPI_SCRIPT)
@@ -191,21 +209,22 @@ def _start_ssh_daemon():
 def _wait_for_training_to_finish(training_environment):
     current_host = training_environment.current_host
 
-    logger.info("worker node {} is waiting for MPI to start training process ".format(current_host))
+    logger.info("worker node {} is waiting for MPI to start training process %s", current_host)
     _wait_for_mpi_to_start_running()
 
-    logger.info("MPI started training process on worker node {}".format(current_host))
+    logger.info("MPI started training process on worker node %s", current_host)
 
     _wait_until_mpi_stops_running()
-    logger.info("Training process started by MPI on worker node {} stopped".format(current_host))
+    logger.info("Training process started by MPI on worker node %s stopped", current_host)
 
 
 def _wait_for_worker_nodes_to_start_sshd(hosts, interval=1, timeout_in_seconds=180):
     with timeout(seconds=timeout_in_seconds):
-        while len(hosts) > 0:
-            logger.info("hosts that aren't SSHable yet: " + str(hosts))
+        while hosts:
+            logger.info("hosts that aren't SSHable yet: %s", str(hosts))
             for host in hosts:
-                host_is_sshable = _can_connect(host, 22, socket.socket(socket.AF_INET, socket.SOCK_STREAM))
+                host_is_sshable = _can_connect(host, 22,
+                                               socket.socket(socket.AF_INET, socket.SOCK_STREAM))
                 if host_is_sshable:
                     hosts.remove(host)
             time.sleep(interval)
@@ -213,13 +232,13 @@ def _wait_for_worker_nodes_to_start_sshd(hosts, interval=1, timeout_in_seconds=1
 
 def _can_connect(host, port, s):
     try:
-        logger.debug("testing connection to host " + host)
+        logger.debug("testing connection to host %s", host)
         s.connect((host, port))
         s.close()
-        logger.debug("can connect to host " + host)
+        logger.debug("can connect to host %s", host)
         return True
     except socket.error:
-        logger.debug("can't connect to host " + host)
+        logger.debug("can't connect to host %s", host)
         return False
 
 
@@ -227,15 +246,12 @@ def _retry_if_false(result):
     return result is False
 
 
-@retry(stop_max_delay=30 * 1000,
-       wait_fixed=1000,
-       retry_on_result=_retry_if_false)
+@retry(stop_max_delay=30 * 1000, wait_fixed=1000, retry_on_result=_retry_if_false)
 def _wait_for_mpi_to_start_running():
     return os.path.isfile(_MPI_IS_RUNNING)
 
 
-@retry(wait_fixed=5000,
-          retry_on_result=_retry_if_false)
+@retry(wait_fixed=5000, retry_on_result=_retry_if_false)
 def _wait_until_mpi_stops_running():
     return os.path.isfile(_MPI_IS_FINISHED)
 
@@ -271,8 +287,8 @@ def main():
 
 
 # This branch hit by mpi_script.sh (see docker base directory)
-if __name__=='__main__':
-    training_env = sagemaker_containers.env.TrainingEnv()
-    mod = sagemaker_containers.modules.download_and_import(training_env.module_dir,
-                                                           training_env.module_name)
-    _run_training(training_env, mod)
+if __name__ == '__main__':
+    _training_env = sagemaker_containers.env.TrainingEnv()
+    _user_module = sagemaker_containers.modules.download_and_import(_training_env.module_dir,
+                                                                    _training_env.module_name)
+    _run_training(_training_env, _user_module)

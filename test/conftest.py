@@ -79,7 +79,8 @@ def opt_ml():
 
     # Docker cannot mount Mac OS /var folder properly see
     # https://forums.docker.com/t/var-folders-isnt-mounted-properly/9600
-    opt_ml_dir = '/private{}'.format(tmp) if platform.system() == 'Darwin' else tmp
+    opt_ml_dir = '/private{}'.format(
+        tmp) if platform.system() == 'Darwin' else tmp
     yield opt_ml_dir
 
     print('----------------------------------------------')
@@ -109,7 +110,7 @@ def docker_registry(aws_id, region):
 
 @pytest.fixture(scope='session')
 def ecr_image(docker_registry, docker_base_name, tag):
-    return '{}/preprod-{}:{}'.format(docker_registry, docker_base_name, tag)
+    return '369233609183.dkr.ecr.us-west-2.amazonaws.com/chainer:4.0.0-gpu-py3'
 
 
 @pytest.fixture(scope='session')
@@ -118,27 +119,31 @@ def sagemaker_session(region):
 
 
 @pytest.fixture(scope='session', autouse=True)
-def build_base_image(request, framework_version, processor, tag, docker_base_name):
+def build_base_image(request, framework_version, processor, tag,
+                     docker_base_name):
     build_base_image = request.config.getoption('--build-base-image')
     if build_base_image:
-        return local_mode.build_base_image(framework_name=docker_base_name,
-                                           framework_version=framework_version,
-                                           base_image_tag=tag,
-                                           processor=processor,
-                                           cwd=os.path.join(dir_path, '..'))
+        return local_mode.build_base_image(
+            framework_name=docker_base_name,
+            framework_version=framework_version,
+            base_image_tag=tag,
+            processor=processor,
+            cwd=os.path.join(dir_path, '..'))
 
     return tag
 
 
 @pytest.fixture(scope='session', autouse=True)
-def build_image(request, py_version, framework_version, processor, tag, docker_base_name):
+def build_image(request, py_version, framework_version, processor, tag,
+                docker_base_name):
     build_image = request.config.getoption('--build-image')
     if build_image:
-        return local_mode.build_image(framework_name=docker_base_name,
-                                      py_version=py_version,
-                                      framework_version=framework_version,
-                                      processor=processor,
-                                      tag=tag,
-                                      cwd=os.path.join(dir_path, '..'))
+        return local_mode.build_image(
+            framework_name=docker_base_name,
+            py_version=py_version,
+            framework_version=framework_version,
+            processor=processor,
+            tag=tag,
+            cwd=os.path.join(dir_path, '..'))
 
     return tag

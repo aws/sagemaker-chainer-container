@@ -9,8 +9,12 @@ from mock import MagicMock
 from sagemaker_containers import env
 
 INPUT_DATA_CONFIG = {
-    "train": {"ContentType": "trainingContentType"},
-    "evaluation": {"ContentType": "evalContentType"},
+    "train": {
+        "ContentType": "trainingContentType"
+    },
+    "evaluation": {
+        "ContentType": "evalContentType"
+    },
     "Validation": {}
 }
 
@@ -62,7 +66,10 @@ def _write_config_file(path, filename, data):
 
 
 def _write_resource_config(path, current_host, hosts):
-    _write_config_file(path, 'resourceconfig.json', {'current_host': current_host, 'hosts': hosts})
+    _write_config_file(path, 'resourceconfig.json', {
+        'current_host': current_host,
+        'hosts': hosts
+    })
 
 
 def _serialize_hyperparameters(hp):
@@ -79,6 +86,7 @@ def _setup_training_structure():
 
     _write_resource_config(tmp, 'a', ['a', 'b'])
     _write_config_file(tmp, 'inputdataconfig.json', INPUT_DATA_CONFIG)
-    _write_config_file(tmp, 'hyperparameters.json', _serialize_hyperparameters(HYPERPARAMETERS))
+    _write_config_file(tmp, 'hyperparameters.json',
+                       _serialize_hyperparameters(HYPERPARAMETERS))
 
     return tmp
