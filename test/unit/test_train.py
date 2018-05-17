@@ -3,8 +3,8 @@ import os
 import shutil
 import tempfile
 
-import pytest
 from mock import MagicMock
+import pytest
 from sagemaker_containers import env
 
 INPUT_DATA_CONFIG = {

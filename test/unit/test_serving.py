@@ -3,7 +3,6 @@ import json
 from chainer import Variable
 import numpy as np
 import pytest
-
 from sagemaker_containers import content_types, encoders
 
 from chainer_framework import serving

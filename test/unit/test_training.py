@@ -9,7 +9,7 @@ import chainer.links as L
 from mock import call, MagicMock, patch
 import pytest
 
-from chainer_framework import training, timeout
+from chainer_framework import timeout, training
 
 
 # pylint: disable=protected-access
@@ -169,10 +169,10 @@ def test_distributed_training_dont_save_model_on_worker_nodes(
 
 
 def test_distributed_training_from_master_node(master_node_distributed_training_env, user_module):
+    start_ssh_daemon_import = 'chainer_framework.training._wait_for_worker_nodes_to_start_sshd'
     with patch('chainer_framework.training._change_hostname') as mock_change_hostname, \
             patch('chainer_framework.training._start_ssh_daemon') as mock_start_ssh_daemon, \
-            patch('chainer_framework.training._wait_for_worker_nodes_to_start_sshd') \
-                    as mock_wait_for_sshd, \
+            patch(start_ssh_daemon_import) as mock_wait_for_sshd, \
             patch('chainer_framework.training._run_mpi_on_all_nodes') as mock_run_mpi_on_all_nodes:
         training.train(user_module, master_node_distributed_training_env)
 
@@ -186,11 +186,10 @@ def test_distributed_training_from_master_node(master_node_distributed_training_
 
 
 def test_distributed_training_from_worker_node(worker_node_distributed_training_env, user_module):
+    wait_for_training_to_finish_import = 'chainer_framework.training._wait_for_training_to_finish'
     with patch('chainer_framework.training._change_hostname') as mock_change_hostname, \
             patch('chainer_framework.training._start_ssh_daemon') as mock_start_ssh_daemon, \
-            patch('chainer_framework.training._wait_for_training_to_finish') \
-                    as mock_wait_for_training_to_finish:
-
+            patch(wait_for_training_to_finish_import) as mock_wait_for_training_to_finish:
         training.train(user_module, worker_node_distributed_training_env)
 
         mock_change_hostname.assert_called_once_with(
@@ -276,10 +275,10 @@ def test_start_ssh_daemon():
 
 
 def test_wait_for_training_to_finish(worker_node_distributed_training_env):
-    with patch('chainer_framework.training._wait_for_mpi_to_start_running') \
-            as mock_wait_for_mpi_to_start_running, \
-            patch('chainer_framework.training._wait_until_mpi_stops_running') \
-                    as mock_wait_until_mpi_stops_running:
+    wait_for_mpi_import = 'chainer_framework.training._wait_for_mpi_to_start_running'
+    wait_until_mpi_stops_import = 'chainer_framework.training._wait_until_mpi_stops_running'
+    with patch(wait_for_mpi_import) as mock_wait_for_mpi_to_start_running, \
+            patch(wait_until_mpi_stops_import) as mock_wait_until_mpi_stops_running:
         training._wait_for_training_to_finish(worker_node_distributed_training_env)
 
         mock_wait_for_mpi_to_start_running.assert_called_once()

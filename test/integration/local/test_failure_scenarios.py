@@ -1,4 +1,5 @@
 import os
+
 from test.utils import local_mode
 
 resource_path = os.path.join(

@@ -9,11 +9,11 @@ import tempfile
 from time import sleep
 
 import boto3
-import requests
-import yaml
 from botocore.exceptions import ClientError
-from sagemaker_containers import content_types, encoders
+import requests
 from sagemaker import fw_utils
+from sagemaker_containers import content_types, encoders
+import yaml
 
 CYAN_COLOR = '\033[36m'
 END_COLOR = '\033[0m'

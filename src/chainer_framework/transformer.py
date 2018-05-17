@@ -11,14 +11,13 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 import chainer
+from sagemaker_containers import transformer
 
 # Try to import cupy (for GPU inference)
 try:
     import cupy as cp
 except ImportError:
     pass
-
-from sagemaker_containers import transformer
 
 
 def default_predict_fn(input_data, model):
@@ -59,5 +58,4 @@ def create(model_fn=transformer.default_model_fn,
            input_fn=transformer.default_input_fn,
            predict_fn=default_predict_fn,
            output_fn=default_output_fn):
-
     return transformer.T(model_fn, input_fn, predict_fn, output_fn)

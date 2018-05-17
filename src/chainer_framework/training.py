@@ -197,8 +197,7 @@ def _get_mpi_command(training_environment):
         if v in os.environ:
             mpi_command += " -x {}".format(v)
 
-    mpi_command += " {} ".format(additional_mpi_options) \
-                 + " {}".format(_MPI_SCRIPT)
+    mpi_command += " {} ".format(additional_mpi_options) + " {}".format(_MPI_SCRIPT)
     return mpi_command
 
 

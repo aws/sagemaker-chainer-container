@@ -3,12 +3,12 @@ from __future__ import print_function
 import os
 
 import chainer
-import chainer.functions as F
-import chainer.links as L
-import numpy as np
 from chainer import serializers, training
 from chainer.datasets import tuple_dataset
+import chainer.functions as F
+import chainer.links as L
 from chainer.training import extensions
+import numpy as np
 
 
 class MLP(chainer.Chain):

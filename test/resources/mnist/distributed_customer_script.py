@@ -4,14 +4,14 @@ import logging
 import os
 
 import chainer
-import chainer.functions as F
-import chainer.links as L
-import numpy as np
 from chainer import serializers, training
 from chainer.datasets import tuple_dataset
+import chainer.functions as F
+import chainer.links as L
 from chainer.training import extensions
-
 import chainermn
+import numpy as np
+
 
 logger = logging.getLogger('user_script')
 logger.setLevel(logging.INFO)

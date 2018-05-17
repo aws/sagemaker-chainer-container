@@ -10,30 +10,26 @@
 #  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
 #  express or implied. See the License for the specific language governing
 #  permissions and limitations under the License.
-
 import os
 
 import numpy as np
 from sagemaker.utils import sagemaker_timestamp
-
-from estimator import ChainerTestEstimator
 from timeout import timeout, timeout_and_delete_endpoint
 
+from estimator import ChainerTestEstimator
 
-def test_chainer_mnist_single_machine(sagemaker_session, ecr_image,
-                                      instance_type):
+
+def test_chainer_mnist_single_machine(sagemaker_session, ecr_image, instance_type):
     script_path = 'test/resources/mnist/single_machine_customer_script.py'
     _test_mnist(sagemaker_session, ecr_image, instance_type, script_path, 1)
 
 
-def test_chainer_mnist_distributed(sagemaker_session, ecr_image,
-                                   instance_type):
+def test_chainer_mnist_distributed(sagemaker_session, ecr_image, instance_type):
     script_path = 'test/resources/mnist/distributed_customer_script.py'
     _test_mnist(sagemaker_session, ecr_image, instance_type, script_path, 2)
 
 
-def _test_mnist(sagemaker_session, ecr_image, instance_type, script_path,
-                instance_count):
+def _test_mnist(sagemaker_session, ecr_image, instance_type, script_path, instance_count):
     with timeout(minutes=15):
         data_path = 'test/resources/mnist/data'
 
