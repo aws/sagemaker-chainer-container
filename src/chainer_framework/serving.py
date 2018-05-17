@@ -1,6 +1,7 @@
 import logging
 
 import chainer
+import numpy as np
 from sagemaker_containers import encoders, env, modules, transformer, worker
 
 logger = logging.getLogger(__name__)
@@ -8,7 +9,7 @@ logger.setLevel(logging.DEBUG)
 
 
 def default_input_fn(input_data, content_type):
-    return encoders.decode(input_data, content_type)
+    return encoders.decode(input_data, content_type).astype(np.float32)
 
 
 def default_predict_fn(data, model):

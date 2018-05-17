@@ -1,18 +1,18 @@
 import json
 import logging
+import os
 import shutil
 import subprocess
 import sys
 import tarfile
 import tempfile
 from time import sleep
-
-import boto3
-import os
-import requests
 import yaml
 
+import boto3
 from botocore.exceptions import ClientError
+import requests
+
 from sagemaker import fw_utils
 from sagemaker_containers import content_types, encoders
 
@@ -336,11 +336,12 @@ def create_docker_services(command, tmpdir, hosts, image, additional_volumes, ad
 
     environment.extend(additional_env_vars)
 
-    result =  {h: create_docker_host(tmpdir, h, image, environment, optml_dirs, command, additional_volumes, entrypoint)
-            for h in
-            hosts}
+    result = {h: create_docker_host(tmpdir, h, image, environment, optml_dirs, command, additional_volumes, entrypoint)
+              for h in
+              hosts}
     print('create_docker_services: {}'.format(result))
     return result
+
 
 def create_docker_host(tmpdir, host, image, environment, optml_subdirs, command, volumes, entrypoint=None):
     optml_volumes = optml_volumes_list(tmpdir, host, optml_subdirs)
@@ -584,8 +585,10 @@ def get_model_dir(resource_folder, host='algo-1'):
 
 
 def request(data, content_type=content_types.JSON):
-    serialized_output = requests.post(REQUEST_URL,
-                                      data=encoders.encode(data, content_type),
-                                      headers={'Content-type': content_type,
-                                               'Accept': content_type}).content
-    return encoders.decode(serialized_output, content_type)
+    data = encoders.encode(data, content_type)
+    headers = {'Content-type': content_type, 'Accept': content_type}
+    response = requests.post(REQUEST_URL, data=data, headers=headers)
+
+    data = response.text if content_type in content_types.UTF8_TYPES else response.content
+
+    return encoders.decode(data, content_type)
