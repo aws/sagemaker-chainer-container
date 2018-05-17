@@ -33,7 +33,7 @@ def fixture_master_node_distributed_training_env():
     env.current_host = 'algo-1'
     env.hosts = ['algo-1', 'algo-2']
     env.hyperparameters = {}
-    env.network_interface_name = "ethmock"
+    env.network_interface_name = "foonetwork"
     env.num_gpus = 4
     return env
 
@@ -74,11 +74,6 @@ def fixture_user_module():
     return MagicMock(spec=['train'])
 
 
-@pytest.fixture(name='user_module_with_save')
-def fixture_user_module_with_save():
-    return MagicMock(spec=['train', 'save'])
-
-
 class DummyModel(chainer.Chain):
     def __init__(self):
         super(DummyModel, self).__init__()
@@ -89,8 +84,7 @@ class DummyModel(chainer.Chain):
         return self.l1()
 
 
-def test_single_machine_train_and_default_save(single_machine_training_env, user_module,
-                                               training_state):
+def test_single_machine_train(single_machine_training_env, user_module, training_state):
     def user_module_train():
         training_state.trained = True
         training_state.model = chainer.Chain()
@@ -101,83 +95,6 @@ def test_single_machine_train_and_default_save(single_machine_training_env, user
     training.train(user_module, single_machine_training_env)
 
     assert training_state.trained
-    assert os.path.exists(
-        os.path.join(single_machine_training_env.model_dir, training.MODEL_FILE_NAME))
-
-
-def test_single_machine_train_and_user_module_save(single_machine_training_env,
-                                                   user_module_with_save, training_state):
-    def user_module_train():
-        training_state.trained = True
-        training_state.model = chainer.Chain()
-        return training_state.model
-
-    user_module_with_save.train = user_module_train
-
-    training.train(user_module_with_save, single_machine_training_env)
-
-    assert training_state.trained
-    user_module_with_save.save.assert_called_with(training_state.model,
-                                                  single_machine_training_env.model_dir)
-
-
-def test_default_save(single_machine_training_env):
-    model = DummyModel()
-
-    training._default_save(single_machine_training_env, model)
-    model_path = os.path.join(single_machine_training_env.model_dir, training.MODEL_FILE_NAME)
-    loaded_model = DummyModel()
-
-    serializers.load_npz(os.path.join(model_path), loaded_model)
-
-
-def test_warn_when_no_model_is_saved(single_machine_training_env, user_module, training_state):
-    def user_module_train():
-        training_state.trained = True
-        training_state.model = None
-        return training_state.model
-
-    user_module.train = user_module_train
-
-    logger_mock = MagicMock(name='logger_mock')
-    training.logger = logger_mock
-
-    training._run_training(single_machine_training_env, user_module)
-
-    assert training_state.trained
-    logger_mock.warning.assert_called_with(
-        "Model object is empty. No model was saved! train() should return a model."
-    )
-
-
-def test_distributed_training_save_model_on_master_node(master_node_distributed_training_env,
-                                                        user_module, training_state):
-    def user_module_train():
-        training_state.trained = True
-        training_state.model = chainer.Chain()
-        return training_state.model
-
-    user_module.train = user_module_train
-
-    with patch('chainer_framework.training._default_save') as mock_default_save:
-        training._run_training(master_node_distributed_training_env, user_module)
-
-        mock_default_save.assert_called_once()
-
-
-def test_distributed_training_dont_save_model_on_worker_nodes(
-        worker_node_distributed_training_env, user_module, training_state, user_module_with_save):
-    def user_module_train():
-        training_state.trained = True
-        training_state.model = chainer.Chain()
-        return training_state.model
-
-    user_module_with_save.train = user_module_train
-
-    with patch('chainer_framework.training._default_save') as mock_default_save:
-        training._run_training(worker_node_distributed_training_env, user_module)
-
-        mock_default_save.assert_not_called()
 
 
 def test_distributed_training_from_master_node(master_node_distributed_training_env, user_module):

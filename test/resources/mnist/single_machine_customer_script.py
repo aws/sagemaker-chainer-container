@@ -59,7 +59,7 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb
         return images
 
 
-def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
+def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir, model_dir):
     train_file = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))
     test_file = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))
 
@@ -154,6 +154,7 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
     # Run the training
     trainer.run()
 
+    serializers.save_npz(os.path.join(model_dir, 'model.npz'), model)
     return model
 
 

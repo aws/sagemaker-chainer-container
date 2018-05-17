@@ -81,17 +81,7 @@ def train(user_module, training_env):
 def _run_training(env, user_module):
     training_parameters = functions.matching_args(user_module.train, env)
     logger.info('Invoking user training script.')
-    model = user_module.train(**training_parameters)
-
-    hosts = env.hosts
-    on_master_node = env.current_host == _get_master_host_name(hosts)
-    if model and on_master_node:
-        if hasattr(user_module, 'save'):
-            user_module.save(model, env.model_dir)
-        else:
-            _default_save(env, model)
-    if not model and on_master_node:
-        logger.warning("Model object is empty. No model was saved! train() should return a model.")
+    user_module.train(**training_parameters)
 
 
 def _default_save(env, model):
@@ -99,7 +89,8 @@ def _default_save(env, model):
 
 
 def _change_hostname(current_host):
-    """Compiles a shared library to correct the behavior of the gethostname system call, which OpenMPI depends on.
+    """Compiles a shared library to correct the behavior of the gethostname system call,
+        which OpenMPI depends on.
 
     Args:
         current_host (str): name of the current host, such as algo-1, algo-2, etc.
@@ -132,10 +123,10 @@ def _get_mpi_command(training_env):
 
     * --host [host:slots]: A comma-delimited list of hosts and the number of process
         slots on each host.
-    * -mca btl_tcp_if_include [training_env.network_interface_name]: Tell OpenMPI to use the given network
-        interface name for byte transfer layer communication.
-    * -mca oob_tcp_if_include [training_env.network_interface_name]: Tell OpenMPI to use the given network
-        interface name for out-of-band communication.
+    * -mca btl_tcp_if_include [training_env.network_interface_name]: Tell OpenMPI to use
+        the given network interface name for byte transfer layer communication.
+    * -mca oob_tcp_if_include [training_env.network_interface_name]: Tell OpenMPI to use
+        the given network interface name for out-of-band communication.
     * -mca btl ^openib: Don't look for openib components (this just avoids a warning)
     * -x PATH: pass $PATH from the current environment to the execution environments on remote hosts
     * -x LD_LIBRARY_PATH: pass $LD_LIBRARY_PATH from the current environment to the execution
@@ -145,8 +136,8 @@ def _get_mpi_command(training_env):
     * -mca orte_abort_on_non_zero_status 1: Return a non-zero exit code if any process exits
         with a non-zero exit code.
     * -x NCCL_DEBUG=INFO: Enable info level logging for NCCL.
-    * -x NCCL_SOCKET_IFNAME=[training_env.network_interface_name]: Tell NCCL to use the given network
-        interface name for socket communication.
+    * -x NCCL_SOCKET_IFNAME=[training_env.network_interface_name]: Tell NCCL to use the given
+        network interface name for socket communication.
     * -np [num_processes]: total number of processes to run across all nodes.
 
     Args:
@@ -159,7 +150,7 @@ def _get_mpi_command(training_env):
     num_gpus = training_env.num_gpus
     hyperparameters = training_env.hyperparameters
     is_gpu = num_gpus if num_gpus > 0 else 1
-    
+
     process_slots_per_host = int(hyperparameters.get('process_slots_per_host', is_gpu))
 
     num_hosts = len(training_env.hosts)
@@ -216,11 +207,8 @@ def _wait_for_worker_nodes_to_start_sshd(hosts, interval=1, timeout_in_seconds=1
         while hosts:
             logger.info("hosts that aren't SSHable yet: %s", str(hosts))
             for host in hosts:
-                
                 ssh_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                host_is_sshable = _can_connect(host, 22, ssh_socket)
-                
-                if host_is_sshable:
+                if _can_connect(host, 22, ssh_socket):
                     hosts.remove(host)
             time.sleep(interval)
 

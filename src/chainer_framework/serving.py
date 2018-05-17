@@ -29,7 +29,7 @@ def default_predict_fn(data, model):
     """A default predict_fn for Chainer. Calls a model on data deserialized in input_fn.
 
     Args:
-        input_data: input data for prediction deserialized by input_fn
+        data: input data for prediction deserialized by input_fn
         model: model loaded in memory by model_fn
 
     Returns: a prediction
@@ -39,24 +39,13 @@ def default_predict_fn(data, model):
         return predicted_data.data
 
 
-def default_output_fn(prediction, accept):
-    """A default output_fn for Chainer. Serializes predictions from predict_fn.
+default_output_fn = transformer.default_output_fn
 
-    Args:
-        prediction_output: a prediction result from predict_fn
-        accept: type which the output data needs to be serialized
-
-    Returns
-        output data serialized
-    """
-    prediction = prediction.tolist() if hasattr(prediction, 'tolist') else prediction
-
-    return transformer.default_output_fn(prediction, accept)
+default_model_fn = transformer.default_model_fn
 
 
 def _user_module_transformer(user_module):
-
-    model_fn = getattr(user_module, 'model_fn', transformer.default_model_fn)
+    model_fn = getattr(user_module, 'model_fn', default_model_fn)
     input_fn = getattr(user_module, 'input_fn', default_input_fn)
     predict_fn = getattr(user_module, 'predict_fn', default_predict_fn)
     output_fn = getattr(user_module, 'output_fn', default_output_fn)
@@ -66,13 +55,12 @@ def _user_module_transformer(user_module):
 
 
 def main(environ, start_response):
-
     serving_env = env.ServingEnv()
     user_module = modules.download_and_import(serving_env.module_dir, serving_env.module_name)
 
-    trans = _user_module_transformer(user_module)
+    user_module_transformer = _user_module_transformer(user_module)
 
-    trans.initialize()
+    user_module_transformer.initialize()
 
-    return worker.Worker(
-        transform_fn=trans.transform, module_name='fake_ml_model')(environ, start_response)
+    app = worker.Worker(transform_fn=user_module_transformer.transform, module_name='fake_ml_model')
+    return app(environ, start_response)

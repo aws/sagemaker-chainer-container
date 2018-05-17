@@ -63,7 +63,7 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb
     return images
 
 
-def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir, current_host):
+def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir, current_host, model_dir):
     logger.info('Current host: {}'.format(current_host))
     batch_size = hyperparameters.get('batch_size', 200)
     epochs = hyperparameters.get('epochs', 20)
@@ -142,6 +142,11 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir, curren
         trainer.extend(extensions.ProgressBar())
 
     trainer.run()
+
+    # only save the model in the master node
+    if current_host == 'algo-1':
+        serializers.save_npz(os.path.join(model_dir, 'model.npz'), model)
+
     return model
 
 

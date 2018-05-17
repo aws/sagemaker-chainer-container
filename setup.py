@@ -27,13 +27,14 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.5',
     ],
-    install_requires=['sagemaker-containers==2.0.0', 'chainer', 'retrying==1.3.3', 'numpy'],
-    dependency_links=['pip install git+https://github.com/aws/sagemaker-containers@r2.0',
+    install_requires=['sagemaker-containers==2.0.0', 'chainer >= 4.0.0', 'retrying==1.3.3',
+                      'numpy >= 1.14'],
+    dependency_links=['pip install git+https://github.com/aws/sagemaker-containers@v2.0.0-rc0',
                       'pip install git+https://github.com/aws/sagemaker-python-sdk-staging'],
     extras_require={
         'test': [
             'tox', 'flake8', 'flake8-import-order', 'pytest', 'pytest-cov', 'pytest-xdist', 'mock',
             'Flask', 'boto3>=1.4.8', 'docker-compose', 'nvidia-docker-compose', 'sagemaker',
-            'PyYAML'
+            'PyYAML', 'requests'
         ]
     })

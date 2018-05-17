@@ -120,7 +120,7 @@ def fixture_docker_registry(aws_id, region):
 
 @pytest.fixture(scope='session', name='ecr_image')
 def fixture_ecr_image(docker_registry, docker_base_name, tag):
-    return '369233609183.dkr.ecr.us-west-2.amazonaws.com/chainer:4.0.0-gpu-py2'
+    return '{}/preprod-{}:{}'.format(docker_registry, docker_base_name, tag)
 
 
 @pytest.fixture(scope='session', name='sagemaker_session')
