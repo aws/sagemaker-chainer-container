@@ -19,10 +19,9 @@ import subprocess
 import sys
 import textwrap
 import time
-import traceback
 
 from retrying import retry
-from sagemaker_containers import env, mapping, modules
+from sagemaker_containers import env, mapping, modules, trainer
 
 from chainer_framework.timeout import timeout
 
@@ -92,6 +91,11 @@ def _run_training(training_env):
 
     args = hyperparameters + channels
 
+    _run_module_from_s3(args, training_env)
+
+
+@trainer.report_training_status
+def _run_module_from_s3(args, training_env):
     modules.run_module_from_s3(training_env.module_dir, args, training_env.module_name)
 
 
@@ -112,15 +116,15 @@ def _get_master_host_name(hosts):
 def _run_mpi_on_all_nodes(training_env):
     mpi_command = _get_mpi_command(training_env)
     logger.info("mpi_command: %s", mpi_command)
-    try:
-        subprocess.check_call(shlex.split(mpi_command))
 
-        write_success_file(training_env.output_dir)
-    except Exception as e:
-        trc = traceback.format_exc()
-        message = 'uncaught exception during training: {}\n{}\n'.format(e, trc)
-        logger.error(message)
-        write_failure_file(message, training_env.output_dir)
+    _run_mpi(mpi_command)
+
+
+@trainer.report_training_status
+def _run_mpi(mpi_command):
+    import pdb;
+    pdb.set_trace()
+    subprocess.check_call(shlex.split(mpi_command))
 
 
 def _get_mpi_command(training_env):
@@ -207,7 +211,7 @@ def _create_mpi_script(training_env):
     channels = mapping.to_cmd_args(training_env.channel_input_dirs)
     modules.download_and_install(training_env.module_dir)
 
-    python_cmd = [sys.executable, '-m', training_env.module_name]
+    python_cmd = [sys.executable, '-m', 'mpi4py', '-m', training_env.module_name]
     python_cmd.extend(hyperparameters)
     python_cmd.extend(channels)
 
@@ -283,31 +287,10 @@ def _wait_until_mpi_stops_running():
     return os.path.isfile(_MPI_IS_FINISHED)
 
 
-# TODO: this should come from sagemaker_containers, once it's implemented there
-def write_success_file(output_dir):
-    success_file = os.path.join(output_dir, 'success')
-    open(success_file, 'w').close()
-
-
-# TODO: this should come from sagemaker_containers, once it's implemented there
-def write_failure_file(message, output_dir):
-    failure_file = os.path.join(output_dir, 'failure')
-    with open(failure_file, 'a') as fd:
-        fd.write(message)
-
-
 def main():
     training_env = env.TrainingEnv()
 
-    try:
-        train(training_env)
-
-        write_success_file(training_env.output_dir)
-    except Exception as e:
-        trc = traceback.format_exc()
-        message = 'uncaught exception during training: {}\n{}\n'.format(e, trc)
-        logger.error(message)
-        write_failure_file(message, training_env.output_dir)
+    train(training_env)
 
 
 # This branch hit by mpi_script.sh (see docker base directory)
