@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import print_function
 
+import argparse
 import os
 
 import chainer
@@ -21,6 +22,7 @@ from chainer.datasets import tuple_dataset
 import chainer.functions as F
 import chainer.links as L
 import numpy as np
+from sagemaker_containers import env
 
 
 class MLP(chainer.Chain):
@@ -58,9 +60,32 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb
         return images
 
 
-def train(channel_input_dirs, hyperparameters, num_gpus, model_dir):
-    train_file = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))
-    test_file = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))
+if __name__ == '__main__':
+    training_env = env.TrainingEnv()
+
+    parser = argparse.ArgumentParser()
+
+    # Data and model checkpoints directories
+    parser.add_argument('--units', type=int, default=1000)
+    parser.add_argument('--epochs', type=int, default=20)
+    parser.add_argument('--batch-size', type=int, default=100)
+    parser.add_argument('--model-dir', type=str, default=training_env.model_dir)
+
+    # we need to decide if we are passing the channels as arg parse parameters
+    # if not the code here would change to the following
+
+    # parser.add_argument('--train', type=str, default=training_env.channel_input_dirs['train'])
+    # parser.add_argument('--test', type=str, default=training_env.channel_input_dirs['test'])
+
+    parser.add_argument('--train', type=str)
+    parser.add_argument('--test', type=str)
+
+    parser.add_argument('--num-gpus', type=int, default=training_env.num_gpus)
+
+    args = parser.parse_args()
+
+    train_file = np.load(os.path.join(args.train, 'train.npz'))
+    test_file = np.load(os.path.join(args.test, 'test.npz'))
 
     preprocess_mnist_options = {
         'withlabel': True,
@@ -74,16 +99,12 @@ def train(channel_input_dirs, hyperparameters, num_gpus, model_dir):
     train = _preprocess_mnist(train_file, **preprocess_mnist_options)
     test = _preprocess_mnist(test_file, **preprocess_mnist_options)
 
-    batch_size = hyperparameters.get('batch_size', 100)
-    epochs = hyperparameters.get('epochs', 20)
-    units = hyperparameters.get('units', 1000)
-
     # Set up a neural network to train
     # Classifier reports softmax cross entropy loss and accuracy at every
     # iteration, which will be used by the PrintReport extension below.
-    model = L.Classifier(MLP(units, 10))
+    model = L.Classifier(MLP(args.units, 10))
 
-    if num_gpus > 0:
+    if args.num_gpus > 0:
         chainer.cuda.get_device_from_id(0).use()
         model.to_gpu()  # Copy the model to the GPU
 
@@ -92,9 +113,9 @@ def train(channel_input_dirs, hyperparameters, num_gpus, model_dir):
     optimizer.setup(model)
 
     # Load the MNIST dataset
-    train_iter = chainer.iterators.SerialIterator(train, batch_size)
+    train_iter = chainer.iterators.SerialIterator(train, args.batch_size)
     test_iter = chainer.iterators.SerialIterator(
-        test, batch_size, repeat=False, shuffle=False)
+        test, args.batch_size, repeat=False, shuffle=False)
 
     sum_accuracy = 0
     sum_loss = 0
@@ -102,9 +123,9 @@ def train(channel_input_dirs, hyperparameters, num_gpus, model_dir):
     train_count = len(train)
     test_count = len(train)
 
-    device = 0 if num_gpus > 0 else -1  # -1 indicates CPU, 0 indicates first GPU device.
+    device = 0 if args.num_gpus > 0 else -1  # -1 indicates CPU, 0 indicates first GPU device.
 
-    while train_iter.epoch < epochs:
+    while train_iter.epoch < args.epochs:
         batch = train_iter.next()
         x_array, t_array = convert.concat_examples(batch, device)
         x = chainer.Variable(x_array)
@@ -134,8 +155,7 @@ def train(channel_input_dirs, hyperparameters, num_gpus, model_dir):
             sum_accuracy = 0
             sum_loss = 0
 
-    serializers.save_npz(os.path.join(model_dir, 'model.npz'), model)
-    return model
+    serializers.save_npz(os.path.join(args.model_dir, 'model.npz'), model)
 
 
 def model_fn(model_dir):

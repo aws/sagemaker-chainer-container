@@ -11,7 +11,7 @@ RUN sed -i s/TkAgg/Agg/ /usr/local/lib/python3.5/dist-packages/matplotlib/mpl-da
 
 COPY dist/sagemaker_chainer_container-1.0-py2.py3-none-any.whl /sagemaker_chainer_container-1.0-py2.py3-none-any.whl
 
-RUN pip3 install --no-cache git+https://github.com/aws/sagemaker-containers@v2.0.0-rc0 && \
+RUN pip3 install --no-cache git+https://github.com/mvsusp/sagemaker-containers@mvs-smode && \
     pip3 install --no-cache /sagemaker_chainer_container-1.0-py2.py3-none-any.whl
 
 ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH

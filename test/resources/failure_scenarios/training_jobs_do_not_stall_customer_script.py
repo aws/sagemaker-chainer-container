@@ -14,7 +14,7 @@ import chainermn
 import mpi4py.MPI
 
 
-def train():
+if __name__ == '__main__':
     mpi_comm = mpi4py.MPI.COMM_WORLD
 
     if mpi_comm.rank == 0:

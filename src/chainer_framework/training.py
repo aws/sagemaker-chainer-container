@@ -15,11 +15,12 @@ import os
 import shlex
 import socket
 import subprocess
+import sys
 import time
 import traceback
 
 from retrying import retry
-from sagemaker_containers import env, functions, modules
+from sagemaker_containers import env, mapping, modules
 
 from chainer_framework.timeout import timeout
 
@@ -35,7 +36,7 @@ _CHANGE_HOSTNAME_LIBRARY = "/libchangehostname.so"
 MODEL_FILE_NAME = "model.npz"
 
 
-def train(user_module, training_env):
+def train(training_env):
     """Runs Chainer training on a user supplied module in either a local or distributed
     SageMaker environment.
 
@@ -56,7 +57,6 @@ def train(user_module, training_env):
     For more on how distributed training uses these parameters, please see :func:`_get_mpi_command`.
 
     Args:
-        user_module : a user supplied module.
         training_env : training environment object containing environment variables,
                                training arguments and hyperparameters
     """
@@ -64,23 +64,34 @@ def train(user_module, training_env):
     use_mpi = bool(training_env.hyperparameters.get('use_mpi', len(training_env.hosts) > 1))
 
     if use_mpi:
+
         current_host = training_env.current_host
         hosts = list(training_env.hosts)
         _change_hostname(current_host)
         _start_ssh_daemon()
+
+        replace_mpi_command(training_env)
+
         if current_host == _get_master_host_name(hosts):
             _wait_for_worker_nodes_to_start_sshd(hosts)
+
+
             _run_mpi_on_all_nodes(training_env)
         else:
             _wait_for_training_to_finish(training_env)
     else:
-        _run_training(training_env, user_module)
+        _run_training(training_env)
 
 
-def _run_training(env, user_module):
-    training_parameters = functions.matching_args(user_module.train, env)
+def _run_training(training_env):
     logger.info('Invoking user training script.')
-    user_module.train(**training_parameters)
+
+    hyperparameters = mapping.to_cmd_args(training_env.hyperparameters)
+    channels = mapping.to_cmd_args(training_env.channel_input_dirs)
+
+    args = hyperparameters + channels
+
+    modules.run_module_from_s3(training_env.module_dir, args, training_env.module_name)
 
 
 def _change_hostname(current_host):
@@ -178,7 +189,39 @@ def _get_mpi_command(training_env):
             mpi_command += " -x {}".format(v)
 
     mpi_command += " {} ".format(additional_mpi_options) + " {}".format(_MPI_SCRIPT)
+
+
     return mpi_command
+
+
+def replace_mpi_command(training_env):
+    with open(_MPI_SCRIPT) as o:
+        x = o.read()
+    hyperparameters = mapping.to_cmd_args(training_env.hyperparameters)
+    channels = mapping.to_cmd_args(training_env.channel_input_dirs)
+    modules.download_and_install(training_env.module_dir)
+    python_cmd = [sys.executable, '-m', training_env.module_name]
+    python_cmd.extend(hyperparameters)
+    python_cmd.extend(channels)
+    print("COMMAND YA===========================================================")
+    print(python_cmd)
+    print(hyperparameters)
+    print(channels)
+    x = x.replace('PLACEHOLDER_FOR_SCRIPT_MODE', ' '.join(python_cmd))
+    with open(_MPI_SCRIPT, 'w') as w:
+        w.write(x)
+    with open(_MPI_SCRIPT,) as o:
+        t = o.read()
+
+    import os
+    import stat
+
+    st = os.stat(_MPI_SCRIPT)
+    os.chmod(_MPI_SCRIPT, st.st_mode | stat.S_IEXEC)
+
+    # python -m mpi4py -m chainer_framework.training
+    print("COMMAND YO===========================================================")
+    print(t)
 
 
 def _start_ssh_daemon():
@@ -250,10 +293,8 @@ def write_failure_file(message, output_dir):
 def main():
     training_env = env.TrainingEnv()
 
-    mod = modules.download_and_import(training_env.module_dir, training_env.module_name)
-
     try:
-        train(mod, training_env)
+        train(training_env)
 
         write_success_file(training_env.output_dir)
     except Exception as e:
@@ -265,6 +306,4 @@ def main():
 
 # This branch hit by mpi_script.sh (see docker base directory)
 if __name__ == '__main__':
-    _training_env = env.TrainingEnv()
-    _user_module = modules.download_and_import(_training_env.module_dir, _training_env.module_name)
-    _run_training(_training_env, _user_module)
+    main()

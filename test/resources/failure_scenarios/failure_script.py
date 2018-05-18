@@ -12,21 +12,31 @@
 # language governing permissions and limitations under the License.
 from __future__ import print_function
 
+import argparse
+
 import chainermn
+from sagemaker_containers import env
 
+if __name__ == '__main__':
+    training_env = env.TrainingEnv()
 
-def train(hyperparameters, num_gpus, hosts):
-    if len(hosts) == 1:
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--num-gpus', type=int, default=training_env.num_gpus)
+    parser.add_argument('--communicator', type=str,
+                        default='naive' if training_env.num_gpus == 0 else 'pure_nccl')
+    parser.add_argument('--hosts', type=str, default=training_env.hosts)
+    parser.add_argument('--node_to_fail', type=str)
+
+    args, _ = parser.parse_known_args()
+
+    if len(args.hosts) == 1:
         raise Exception('Exception on a single machine')
 
-    communicator = hyperparameters.get(
-        'communicator', 'naive' if num_gpus == 0 else 'pure_nccl')
-    comm = chainermn.create_communicator(communicator)
-
-    node_to_fail = hyperparameters.get('node_to_fail')
+    comm = chainermn.create_communicator(args.communicator)
 
     # When running in local mode, setting rank to 'inter_rank' simulates multi-node training.
     rank = comm.inter_rank
 
-    if node_to_fail == rank:
+    if args.node_to_fail == rank:
         raise Exception('exception from node {}'.format(rank))
