@@ -98,7 +98,7 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
     trainer.extend(extensions.snapshot(), trigger=(frequency, 'epoch'))
 
     # Write a log of evaluation statistics for each epoch
-    trainer.extend(extensions.LogReport())
+    trainer.extend(extensions.LogReport(log_name=None))
 
     # Save two plot images to the result dir
     if extensions.PlotReport.available():
