@@ -1,19 +1,35 @@
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
 from __future__ import print_function
 
+import logging
 import os
 
-import numpy as np
 import chainer
+from chainer import serializers, training
+from chainer.datasets import tuple_dataset
 import chainer.functions as F
 import chainer.links as L
-import chainermn
-from chainer import serializers, training
 from chainer.training import extensions
-from chainer.datasets import tuple_dataset
+import chainermn
+import numpy as np
+
+
+logger = logging.getLogger('user_script')
+logger.setLevel(logging.INFO)
 
 
 class MLP(chainer.Chain):
-
     def __init__(self, n_units, n_out):
         super(MLP, self).__init__()
         with self.init_scope():
@@ -44,11 +60,11 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb
     if withlabel:
         labels = raw['y'].astype(label_dtype)
         return tuple_dataset.TupleDataset(images, labels)
-    else:
-        return images
+    return images
 
 
-def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
+def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir, current_host, model_dir):
+    logger.info('Current host: {}'.format(current_host))
     batch_size = hyperparameters.get('batch_size', 200)
     epochs = hyperparameters.get('epochs', 20)
     frequency = hyperparameters.get('frequency', epochs)
@@ -77,19 +93,21 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
     train_file = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))
     test_file = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))
 
-    preprocess_mnist_options = {'withlabel': True,
-                                'ndim': 1,
-                                'scale': 1.,
-                                'image_dtype': np.float32,
-                                'label_dtype': np.int32,
-                                'rgb_format': False}
+    preprocess_mnist_options = {
+        'withlabel': True,
+        'ndim': 1,
+        'scale': 1.,
+        'image_dtype': np.float32,
+        'label_dtype': np.int32,
+        'rgb_format': False
+    }
 
-    train = _preprocess_mnist(train_file, **preprocess_mnist_options)
-    test = _preprocess_mnist(test_file, **preprocess_mnist_options)
+    train_dataset = _preprocess_mnist(train_file, **preprocess_mnist_options)
+    test_dataset = _preprocess_mnist(test_file, **preprocess_mnist_options)
 
-    train_iter = chainer.iterators.SerialIterator(train, batch_size)
-    test_iter = chainer.iterators.SerialIterator(test, batch_size,
-                                                 repeat=False, shuffle=False)
+    train_iter = chainer.iterators.SerialIterator(train_dataset, batch_size)
+    test_iter = chainer.iterators.SerialIterator(
+        test_dataset, batch_size, repeat=False, shuffle=False)
 
     updater = training.StandardUpdater(train_iter, optimizer, device=device)
     trainer = training.Trainer(updater, (epochs, 'epoch'), out=output_data_dir)
@@ -104,21 +122,31 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
     if comm.rank == 0:
         if extensions.PlotReport.available():
             trainer.extend(
-                extensions.PlotReport(['main/loss', 'validation/main/loss'],
-                                      'epoch', file_name='loss.png'))
+                extensions.PlotReport(
+                    ['main/loss', 'validation/main/loss'],
+                    'epoch',
+                    file_name='loss.png'))
             trainer.extend(
                 extensions.PlotReport(
                     ['main/accuracy', 'validation/main/accuracy'],
-                    'epoch', file_name='accuracy.png'))
+                    'epoch',
+                    file_name='accuracy.png'))
         trainer.extend(extensions.snapshot(), trigger=(frequency, 'epoch'))
         trainer.extend(extensions.dump_graph('main/loss'))
         trainer.extend(extensions.LogReport())
-        trainer.extend(extensions.PrintReport(
-            ['epoch', 'main/loss', 'validation/main/loss',
-             'main/accuracy', 'validation/main/accuracy', 'elapsed_time']))
+        trainer.extend(
+            extensions.PrintReport([
+                'epoch', 'main/loss', 'validation/main/loss', 'main/accuracy',
+                'validation/main/accuracy', 'elapsed_time'
+            ]))
         trainer.extend(extensions.ProgressBar())
 
     trainer.run()
+
+    # only save the model in the master node
+    if current_host == 'algo-1':
+        serializers.save_npz(os.path.join(model_dir, 'model.npz'), model)
+
     return model
 
 

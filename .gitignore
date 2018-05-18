@@ -18,6 +18,9 @@ scratch*.py
 examples/tensorflow/distributed_mnist/data
 *.iml
 doc/_build
+.isort.cfg
+.style.yapf
+pep8
 **/.DS_Store
 venv/
 *~

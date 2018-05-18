@@ -1,18 +1,29 @@
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
 from __future__ import print_function
 
 import os
 
-import numpy as np
 import chainer
-import chainer.functions as F
-import chainer.links as L
 from chainer import serializers
 from chainer.dataset import convert
 from chainer.datasets import tuple_dataset
+import chainer.functions as F
+import chainer.links as L
+import numpy as np
 
 
 class MLP(chainer.Chain):
-
     def __init__(self, n_units, n_out):
         super(MLP, self).__init__()
         with self.init_scope():
@@ -47,16 +58,18 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb
         return images
 
 
-def train(channel_input_dirs, hyperparameters, num_gpus):
+def train(channel_input_dirs, hyperparameters, num_gpus, model_dir):
     train_file = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))
     test_file = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))
 
-    preprocess_mnist_options = {'withlabel': True,
-                                'ndim': 1,
-                                'scale': 1.,
-                                'image_dtype': np.float32,
-                                'label_dtype': np.int32,
-                                'rgb_format': False}
+    preprocess_mnist_options = {
+        'withlabel': True,
+        'ndim': 1,
+        'scale': 1.,
+        'image_dtype': np.float32,
+        'label_dtype': np.int32,
+        'rgb_format': False
+    }
 
     train = _preprocess_mnist(train_file, **preprocess_mnist_options)
     test = _preprocess_mnist(test_file, **preprocess_mnist_options)
@@ -80,8 +93,8 @@ def train(channel_input_dirs, hyperparameters, num_gpus):
 
     # Load the MNIST dataset
     train_iter = chainer.iterators.SerialIterator(train, batch_size)
-    test_iter = chainer.iterators.SerialIterator(test, batch_size,
-                                                 repeat=False, shuffle=False)
+    test_iter = chainer.iterators.SerialIterator(
+        test, batch_size, repeat=False, shuffle=False)
 
     sum_accuracy = 0
     sum_loss = 0
@@ -120,6 +133,8 @@ def train(channel_input_dirs, hyperparameters, num_gpus):
                 sum_loss / test_count, sum_accuracy / test_count))
             sum_accuracy = 0
             sum_loss = 0
+
+    serializers.save_npz(os.path.join(model_dir, 'model.npz'), model)
     return model
 
 

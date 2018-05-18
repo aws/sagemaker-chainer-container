@@ -1,18 +1,29 @@
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
 from __future__ import print_function
 
 import os
 
-import numpy as np
 import chainer
+from chainer import serializers, training
+from chainer.datasets import tuple_dataset
 import chainer.functions as F
 import chainer.links as L
-from chainer import training, serializers
 from chainer.training import extensions
-from chainer.datasets import tuple_dataset
+import numpy as np
 
 
 class MLP(chainer.Chain):
-
     def __init__(self, n_units, n_out):
         super(MLP, self).__init__()
         with self.init_scope():
@@ -34,7 +45,8 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb
     elif ndim == 3:
         images = images.reshape(-1, 1, 28, 28)
         if rgb_format:
-            images = np.broadcast_to(images, (len(images), 3) + images.shape[2:])
+            images = np.broadcast_to(images,
+                                     (len(images), 3) + images.shape[2:])
     elif ndim != 1:
         raise ValueError('invalid ndim for MNIST dataset')
     images = images.astype(image_dtype)
@@ -47,16 +59,18 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb
         return images
 
 
-def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
+def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir, model_dir):
     train_file = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))
     test_file = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))
 
-    preprocess_mnist_options = {'withlabel': True,
-                                'ndim': 1,
-                                'scale': 1.,
-                                'image_dtype': np.float32,
-                                'label_dtype': np.int32,
-                                'rgb_format': False}
+    preprocess_mnist_options = {
+        'withlabel': True,
+        'ndim': 1,
+        'scale': 1.,
+        'image_dtype': np.float32,
+        'label_dtype': np.int32,
+        'rgb_format': False
+    }
 
     train = _preprocess_mnist(train_file, **preprocess_mnist_options)
     test = _preprocess_mnist(test_file, **preprocess_mnist_options)
@@ -80,8 +94,7 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
 
     # Load the MNIST dataset
     train_iter = chainer.iterators.SerialIterator(train, batch_size)
-    test_iter = chainer.iterators.SerialIterator(test, batch_size,
-                                                 repeat=False, shuffle=False)
+    test_iter = chainer.iterators.SerialIterator(test, batch_size, repeat=False, shuffle=False)
 
     # Set up a trainer
     device = 0 if num_gpus > 0 else -1  # -1 indicates CPU, 0 indicates first GPU device.
@@ -91,11 +104,13 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
             optimizer,
             # The device of the name 'main' is used as a "master", while others are
             # used as slaves. Names other than 'main' are arbitrary.
-            devices={('main' if device == 0 else str(device)): device for device in range(num_gpus)})
+            devices={('main' if device == 0 else str(device)): device
+                     for device in range(num_gpus)})
     else:
         updater = training.updater.StandardUpdater(train_iter, optimizer, device=device)
 
-    # Write output files to output_data_dir. These are zipped and uploaded to S3 output path as output.tar.gz.
+    # Write output files to output_data_dir. These are zipped and uploaded to S3 output path as
+    # output.tar.gz.
     trainer = training.Trainer(updater, (epochs, 'epoch'), out=output_data_dir)
 
     # Evaluate the model with the test dataset for each epoch
@@ -127,15 +142,19 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
     # "validation" refers to the default name of the Evaluator extension.
     # Entries other than 'epoch' are reported by the Classifier link, called by
     # either the updater or the evaluator.
-    trainer.extend(extensions.PrintReport(
-        ['epoch', 'main/loss', 'validation/main/loss',
-         'main/accuracy', 'validation/main/accuracy', 'elapsed_time']))
+    trainer.extend(
+        extensions.PrintReport([
+            'epoch', 'main/loss', 'validation/main/loss', 'main/accuracy',
+            'validation/main/accuracy', 'elapsed_time'
+        ]))
 
     # Print a progress bar to stdout
     trainer.extend(extensions.ProgressBar())
 
     # Run the training
     trainer.run()
+
+    serializers.save_npz(os.path.join(model_dir, 'model.npz'), model)
     return model
 
 

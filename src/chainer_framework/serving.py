@@ -1,98 +1,110 @@
-import json
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
 
-import numpy as np
+import logging
+
 import chainer
+import numpy as np
+from sagemaker_containers import content_types, encoders, env, modules, transformer, worker
 
-from chainer_framework.serialization import npy, csv
-from container_support.app import ServingEngine
-from container_support.serving import JSON_CONTENT_TYPE, CSV_CONTENT_TYPE, NPY_CONTENT_TYPE, \
-    UnsupportedContentTypeError, UnsupportedAcceptTypeError
-
-engine = ServingEngine()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
-@engine.model_fn()
-def model_fn(model_dir):
-    """
-    Loads a model
-    Args:
-        model_dir:
+def default_input_fn(input_data, content_type):
+    """Takes request data and de-serializes the data into an object for prediction.
 
-    Returns: A Chainer model.
+        When an InvokeEndpoint operation is made against an Endpoint running SageMaker model server,
+        the model server receives two pieces of information:
 
-    """
-    raise NotImplementedError('Please provide a model_fn implementation. '
-                              'See documentation for model_fn at https://github.com/aws/sagemaker-python-sdk')
+            - The request Content-Type, for example "application/json"
+            - The request data, which is at most 5 MB (5 * 1024 * 1024 bytes) in size.
 
-
-@engine.input_fn()
-def input_fn(serialized_input_data, content_type):
-    """A default input_fn that can handle JSON, CSV and NPZ formats.
+        The input_fn is responsible to take the request data and pre-process it before prediction.
 
     Args:
-        serialized_input_data: the request payload serialized in the content_type format
-        content_type: the request content_type
-    Returns: deserialized input_data
+        input_data (obj): the request data.
+        content_type (str): the request Content-Type.
+
+    Returns:
+        (obj): data ready for prediction.
     """
-
-    if content_type == NPY_CONTENT_TYPE:
-        return npy.loads(serialized_input_data)
-
-    if content_type == JSON_CONTENT_TYPE:
-        data = json.loads(serialized_input_data)
-        return np.array(data, dtype=np.float32)
-
-    if content_type == CSV_CONTENT_TYPE:
-        return csv.loads(serialized_input_data)
-
-    raise UnsupportedContentTypeError(content_type)
+    np_array = encoders.decode(input_data, content_type)
+    return np_array.astype(np.float32) if content_type in content_types.UTF8_TYPES else np_array
 
 
-@engine.predict_fn()
-def predict_fn(input_data, model):
+def default_predict_fn(data, model):
     """A default predict_fn for Chainer. Calls a model on data deserialized in input_fn.
 
     Args:
-        input_data: input data for prediction deserialized by input_fn
+        data: input data for prediction deserialized by input_fn
         model: model loaded in memory by model_fn
 
     Returns: a prediction
     """
-
     with chainer.using_config('train', False), chainer.no_backprop_mode():
-        predicted_data = model(input_data)
+        predicted_data = model(data)
         return predicted_data.data
 
 
-@engine.output_fn()
-def output_fn(prediction_output, accept):
-    """A default output_fn for Chainer. Serializes predictions from predict_fn.
+def default_output_fn(prediction, accept):
+    """Function responsible to serialize the prediction for the response.
 
     Args:
-        prediction_output: a prediction result from predict_fn
-        accept: type which the output data needs to be serialized
+        prediction (obj): prediction returned by predict_fn .
+        accept (str): accept content-type expected by the client.
 
-    Returns
-        output data serialized
+    Returns:
+        (worker.Response): a Flask response object with the following args:
+
+            * Args:
+                response: the serialized data to return
+                accept: the content-type that the data was transformed to.
     """
-
-    if accept == JSON_CONTENT_TYPE:
-        prediction_output = prediction_output.tolist() if hasattr(prediction_output, 'tolist') else prediction_output
-        return json.dumps(prediction_output), JSON_CONTENT_TYPE
-
-    if accept == NPY_CONTENT_TYPE:
-        return npy.dumps(prediction_output), NPY_CONTENT_TYPE
-
-    if accept == CSV_CONTENT_TYPE:
-        prediction_output = prediction_output.tolist() if hasattr(prediction_output, 'tolist') else prediction_output
-        return csv.dumps(prediction_output), CSV_CONTENT_TYPE
-
-    raise UnsupportedAcceptTypeError(accept)
+    return worker.Response(encoders.encode(prediction, accept), accept)
 
 
-@engine.transform_fn()
-def transform_fn(model, data, content_type, accept):
-    input_data = input_fn(data, content_type)
-    prediction = predict_fn(input_data, model)
-    output_data, accept = output_fn(prediction, accept)
-    return output_data, accept
+def default_model_fn(model_dir):
+    """Function responsible to load the model.
+        For more information about model loading https://github.com/aws/sagemaker-python-sdk#model-loading.
+
+    Args:
+        model_dir (str): The directory where model files are stored.
+
+    Returns:
+        (obj) the loaded model.
+    """
+    return transformer.default_model_fn(model_dir)
+
+
+def _user_module_transformer(user_module):
+    model_fn = getattr(user_module, 'model_fn', default_model_fn)
+    input_fn = getattr(user_module, 'input_fn', default_input_fn)
+    predict_fn = getattr(user_module, 'predict_fn', default_predict_fn)
+    output_fn = getattr(user_module, 'output_fn', default_output_fn)
+
+    return transformer.Transformer(model_fn=model_fn, input_fn=input_fn, predict_fn=predict_fn,
+                                   output_fn=output_fn)
+
+
+def main(environ, start_response):
+    serving_env = env.ServingEnv()
+    user_module = modules.download_and_import(serving_env.module_dir, serving_env.module_name)
+
+    user_module_transformer = _user_module_transformer(user_module)
+
+    user_module_transformer.initialize()
+
+    app = worker.Worker(transform_fn=user_module_transformer.transform,
+                        module_name=serving_env.module_name)
+    return app(environ, start_response)

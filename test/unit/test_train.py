@@ -1,59 +1,69 @@
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
 import json
 import os
 import shutil
 import tempfile
 
+from mock import MagicMock
 import pytest
-from container_support import ContainerEnvironment
-from mock import MagicMock, patch
-
-from chainer_framework.training import train
+from sagemaker_containers import env
 
 INPUT_DATA_CONFIG = {
-    "train": {"ContentType": "trainingContentType"},
-    "evaluation": {"ContentType": "evalContentType"},
+    "train": {
+        "ContentType": "trainingContentType"
+    },
+    "evaluation": {
+        "ContentType": "evalContentType"
+    },
     "Validation": {}
 }
 
 HYPERPARAMETERS = {
-    ContainerEnvironment.SAGEMAKER_REGION_PARAM_NAME: 'us-west-2',
-    ContainerEnvironment.USER_SCRIPT_NAME_PARAM: 'myscript.py',
-    ContainerEnvironment.USER_SCRIPT_ARCHIVE_PARAM: 's3://mybucket/code.tar.gz'
+    env.REGION_NAME_PARAM: 'us-west-2',
+    env.USER_PROGRAM_PARAM: 'myscript.py',
+    env.SUBMIT_DIR_PARAM: 's3://mybucket/code.tar.gz'
 }
 
 
-@pytest.fixture()
-def training_env():
+@pytest.fixture(name='training_env')
+def fixture_training_env():
     return MagicMock()
 
 
-@pytest.fixture()
-def training_state():
+@pytest.fixture(name='training_state')
+def fixture_training_state():
     training_state = MagicMock()
     training_state.trained = False
     training_state.saved = False
     return training_state
 
 
-@pytest.fixture()
-def user_module():
+@pytest.fixture(name='user_module')
+def fixture_user_module():
     return MagicMock(spec=['train'])
 
 
-@pytest.fixture()
-def user_module_with_save():
+@pytest.fixture(name='user_module_with_save')
+def fixture_user_module_with_save():
     return MagicMock(spec=['train', 'save'])
 
 
-@pytest.fixture()
-def training_structure():
+@pytest.fixture(name='training_structure')
+def fixture_training_structure():
     d = _setup_training_structure()
     yield d
     shutil.rmtree(d)
-
-
-def test_train(training_env, user_module_with_save, training_state):
-    pass
 
 
 def _write_config_file(path, filename, data):
@@ -63,7 +73,10 @@ def _write_config_file(path, filename, data):
 
 
 def _write_resource_config(path, current_host, hosts):
-    _write_config_file(path, 'resourceconfig.json', {'current_host': current_host, 'hosts': hosts})
+    _write_config_file(path, 'resourceconfig.json', {
+        'current_host': current_host,
+        'hosts': hosts
+    })
 
 
 def _serialize_hyperparameters(hp):
@@ -80,6 +93,7 @@ def _setup_training_structure():
 
     _write_resource_config(tmp, 'a', ['a', 'b'])
     _write_config_file(tmp, 'inputdataconfig.json', INPUT_DATA_CONFIG)
-    _write_config_file(tmp, 'hyperparameters.json', _serialize_hyperparameters(HYPERPARAMETERS))
+    _write_config_file(tmp, 'hyperparameters.json',
+                       _serialize_hyperparameters(HYPERPARAMETERS))
 
     return tmp

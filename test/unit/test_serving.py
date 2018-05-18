@@ -1,18 +1,25 @@
-import pytest
-import json
-import numpy as np
-
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
 from chainer import Variable
+import numpy as np
+import pytest
+from sagemaker_containers import content_types, encoders
 
-from container_support.serving import JSON_CONTENT_TYPE, CSV_CONTENT_TYPE, \
-    UnsupportedContentTypeError, UnsupportedAcceptTypeError
-
-from chainer_framework.serialization import csv, npy
-from chainer_framework.serving import model_fn, input_fn, predict_fn, output_fn, transform_fn, NPY_CONTENT_TYPE
+from chainer_framework import serving
 
 
-@pytest.fixture()
-def np_array():
+@pytest.fixture(scope='module', name='np_array')
+def fixture_np_array():
     return np.ones((2, 2))
 
 
@@ -28,94 +35,81 @@ class FakeModel:
         return Variable(fake_predict(x))
 
 
-def test_model_fn():
-    with pytest.raises(NotImplementedError):
-        model_fn('model_dir')
+@pytest.mark.parametrize(
+    'json_data, expected', [('[42, 6, 9]', np.array([42, 6, 9])),
+                            ('[42.0, 6.0, 9.0]', np.array([42., 6., 9.])),
+                            ('["42", "6", "9"]', np.array(['42', '6', '9'], dtype=np.float32)),
+                            (u'["42", "6", "9"]', np.array([u'42', u'6', u'9'], dtype=np.float32))]
+)
+def test_input_fn_json(json_data, expected):
+    actual = serving.default_input_fn(json_data, content_types.JSON)
+
+    np.testing.assert_equal(actual, expected)
 
 
-def test_input_fn_json(np_array):
-    json_data = json.dumps(np_array.tolist())
-    deserialized_np_array = input_fn(json_data, JSON_CONTENT_TYPE)
-
-    assert np.array_equal(np_array, deserialized_np_array)
-
-
+@pytest.mark.parametrize('np_array', ([42, 6, 9], [42., 6., 9.]))
 def test_input_fn_npz(np_array):
-
-    deserialized_np_array = input_fn(npy.dumps(np_array), NPY_CONTENT_TYPE)
+    input_data = encoders.array_to_npy(np_array)
+    deserialized_np_array = serving.default_input_fn(input_data, content_types.NPY)
 
     assert np.array_equal(np_array, deserialized_np_array)
 
+    float_32_array = np.array(np_array, dtype=np.float32)
+    input_data = encoders.array_to_npy(float_32_array)
+    deserialized_np_array = serving.default_input_fn(input_data, content_types.NPY)
 
-def test_input_fn_csv(np_array):
-    flattened_np_array = np.ndarray.flatten(np_array)
-    csv_data = csv.dumps(np.ndarray.flatten(np_array))
+    assert np.array_equal(float_32_array, deserialized_np_array)
 
-    deserialized_np_array = input_fn(csv_data, CSV_CONTENT_TYPE)
+    float_64_array = np.array(np_array, dtype=np.float64)
+    input_data = encoders.array_to_npy(float_64_array)
+    deserialized_np_array = serving.default_input_fn(input_data, content_types.NPY)
 
-    assert np.array_equal(flattened_np_array, deserialized_np_array)
+    assert np.array_equal(float_64_array, deserialized_np_array)
+
+
+@pytest.mark.parametrize(
+    'csv_data, expected', [('42\n6\n9\n', np.array([42, 6, 9], dtype=np.float32)),
+                           ('42.0\n6.0\n9.0\n', np.array([42., 6., 9.], dtype=np.float32)),
+                           ('42\n6\n9\n', np.array([42, 6, 9], dtype=np.float32))]
+)
+def test_input_fn_csv(csv_data, expected):
+
+    deserialized_np_array = serving.default_input_fn(csv_data, content_types.CSV)
+
+    assert np.array_equal(expected, deserialized_np_array)
 
 
 def test_input_fn_bad_content_type():
-    with pytest.raises(UnsupportedContentTypeError):
-        input_fn('', 'application/not_supported')
+    with pytest.raises(encoders.UnsupportedFormatError):
+        serving.default_input_fn('', 'application/not_supported')
 
 
 def test_predict_fn(np_array):
-
-    predicted_data = predict_fn(np_array, FakeModel())
+    predicted_data = serving.default_predict_fn(np_array, FakeModel())
     assert np.array_equal(fake_predict(np_array), predicted_data)
 
 
 def test_output_fn_json(np_array):
+    response = serving.default_output_fn(np_array, content_types.JSON)
 
-    output = output_fn(np_array, JSON_CONTENT_TYPE)
-
-    assert json.dumps(np_array.tolist()) in output
-    assert JSON_CONTENT_TYPE in output
+    assert response.get_data(as_text=True) == encoders.array_to_json(np_array.tolist())
+    assert response.content_type == content_types.JSON
 
 
 def test_output_fn_csv(np_array):
+    response = serving.default_output_fn(np_array, content_types.CSV)
 
-    output = output_fn(np_array, CSV_CONTENT_TYPE)
-
-    assert '1.0,1.0\n1.0,1.0\n' in output
-    assert CSV_CONTENT_TYPE in output
+    assert response.get_data(as_text=True) == '1.0,1.0\n1.0,1.0\n'
+    assert response.content_type == content_types.CSV
 
 
 def test_output_fn_npz(np_array):
+    response = serving.default_output_fn(np_array, content_types.NPY)
 
-    transformed_data, content_type = output_fn(np_array, NPY_CONTENT_TYPE)
-
-    assert npy.dumps(np_array) == transformed_data
-    assert NPY_CONTENT_TYPE == content_type
+    assert response.get_data() == encoders.array_to_npy(np_array)
+    assert response.content_type == content_types.NPY
 
 
 def test_input_fn_bad_accept():
-    with pytest.raises(UnsupportedAcceptTypeError):
-        output_fn('', 'application/not_supported')
-
-
-def test_transform_fn_json(np_array):
-
-    transformed_data, content_type = transform_fn(FakeModel(), json.dumps(np_array.tolist()), JSON_CONTENT_TYPE, JSON_CONTENT_TYPE)
-
-    assert '[[2.0, 2.0], [2.0, 2.0]]' == transformed_data
-    assert JSON_CONTENT_TYPE == content_type
-
-
-def test_transform_fn_csv(np_array):
-
-    transformed_data, content_type = transform_fn(FakeModel(), csv.dumps(np_array.tolist()), CSV_CONTENT_TYPE, CSV_CONTENT_TYPE)
-
-    assert '2.0,2.0\n2.0,2.0\n' == transformed_data
-    assert CSV_CONTENT_TYPE == content_type
-
-def test_transform_fn_npz(np_array):
-
-    transformed_data, content_type = transform_fn(FakeModel(), npy.dumps(np_array), NPY_CONTENT_TYPE,
-                                                  NPY_CONTENT_TYPE)
-
-    transformed_numpy_array = npy.loads(transformed_data)
-    assert np.array_equal(transformed_numpy_array, fake_predict(np_array))
-    assert NPY_CONTENT_TYPE == content_type
+    with pytest.raises(encoders.UnsupportedFormatError):
+        serving.default_output_fn('', 'application/not_supported')

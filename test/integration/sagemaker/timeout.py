@@ -10,17 +10,13 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-import signal
 from contextlib import contextmanager
 import logging
+import signal
 
 from botocore.exceptions import ClientError
 
 LOGGER = logging.getLogger('timeout')
-
-
-class TimeoutError(Exception):
-    pass
 
 
 @contextmanager
@@ -70,7 +66,8 @@ def timeout_and_delete_endpoint(estimator, seconds=0, minutes=0, hours=0):
 
 
 @contextmanager
-def timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, seconds=0, minutes=0, hours=0):
+def timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, seconds=0,
+                                        minutes=0, hours=0):
     with timeout(seconds=seconds, minutes=minutes, hours=hours) as t:
         try:
             yield [t]
