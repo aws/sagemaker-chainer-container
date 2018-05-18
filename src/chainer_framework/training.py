@@ -122,8 +122,6 @@ def _run_mpi_on_all_nodes(training_env):
 
 @trainer.report_training_status
 def _run_mpi(mpi_command):
-    import pdb;
-    pdb.set_trace()
     subprocess.check_call(shlex.split(mpi_command))
 
 
@@ -217,13 +215,15 @@ def _create_mpi_script(training_env):
 
     content = textwrap.dedent("""#!/usr/bin/env bash
 # For distributed training: the 'master node' runs mpirun with this script, '/mpi_script.sh'
-# This script creates a file '/mpi_is_running' that worker nodes use to determine whether training (started by MPI from
-# the master node) is still running. Processes on worker nodes use /mpi_is_finished file to determine when to exit.
+# This script creates a file '/mpi_is_running' that worker nodes use to determine whether training 
+# (started by MPI from the master node) is still running. Processes on worker nodes use 
+# /mpi_is_finished file to determine when to exit.
 touch /mpi_is_running
 %s
 EXIT_CODE=$?
+echo ${EXIT_CODE}
+echo @@@@@@@@@@
 touch /mpi_is_finished
-
 exit ${EXIT_CODE}
 """ % ' '.join(python_cmd))
 
@@ -238,6 +238,7 @@ def _start_ssh_daemon():
     subprocess.Popen(["/usr/sbin/sshd", "-D"])
 
 
+@trainer.report_training_status
 def _wait_for_training_to_finish(training_env):
     current_host = training_env.current_host
 

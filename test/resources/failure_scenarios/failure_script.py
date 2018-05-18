@@ -26,7 +26,7 @@ if __name__ == '__main__':
     parser.add_argument('--communicator', type=str,
                         default='naive' if training_env.num_gpus == 0 else 'pure_nccl')
     parser.add_argument('--hosts', type=str, default=training_env.hosts)
-    parser.add_argument('--node_to_fail', type=str)
+    parser.add_argument('--node_to_fail', type=int)
 
     args, _ = parser.parse_known_args()
 
@@ -39,4 +39,5 @@ if __name__ == '__main__':
     rank = comm.inter_rank
 
     if args.node_to_fail == rank:
+        print('exception from node {}'.format(rank))
         raise Exception('exception from node {}'.format(rank))
