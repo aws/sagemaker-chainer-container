@@ -11,6 +11,10 @@ def model_fn(model_dir):
     """
     This function is called by the Chainer container during hosting when running on SageMaker with
     values populated by the hosting environment.
+    
+    Here, we load the pre-trained model's weights. `voc_bbox_label_names` contains
+    label names, and `SSD300` defines the network architecture. We pass in the
+    number of labels and the path to the model for `SSD300` to load.
 
     Args:
         model_dir (str): path to the directory containing the saved model artifacts
