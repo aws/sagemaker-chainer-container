@@ -22,7 +22,7 @@ import tempfile
 import numpy
 import chainer
 
-from code.nlp_utils import transform_to_array, split_text, normalize_text, make_vocab
+from src.nlp_utils import transform_to_array, split_text, normalize_text, make_vocab
 
 URL_STSA_BASE = 'https://raw.githubusercontent.com/harvardnlp/sent-conv-torch/master/data/'
 
