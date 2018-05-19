@@ -40,3 +40,8 @@ COPY mpi_script.sh /mpi_script.sh
 
 RUN chmod +x /usr/local/bin/change-hostname.sh && \
     chmod +x /mpi_script.sh
+
+# Patch fixes hanging issue with MultiProcessParallelUpdater.
+# This patch is applied in final images.
+# From https://github.com/chainer/chainer/pull/4756
+COPY parallel_updater.patch /parallel_updater.patch
