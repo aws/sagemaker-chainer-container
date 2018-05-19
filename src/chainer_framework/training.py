@@ -61,7 +61,7 @@ def train(user_module, training_env):
                                training arguments and hyperparameters
     """
 
-    use_mpi = bool(training_env.hyperparameters.get('use_mpi', len(training_env.hosts) > 1))
+    use_mpi = bool(training_env.hyperparameters.get('sagemaker_use_mpi', len(training_env.hosts) > 1))
 
     if use_mpi:
         current_host = training_env.current_host
@@ -146,16 +146,16 @@ def _get_mpi_command(training_env):
     hyperparameters = training_env.hyperparameters
     is_gpu = num_gpus if num_gpus > 0 else 1
 
-    process_slots_per_host = int(hyperparameters.get('process_slots_per_host', is_gpu))
+    process_slots_per_host = int(hyperparameters.get('sagemaker_process_slots_per_host', is_gpu))
 
     num_hosts = len(training_env.hosts)
-    num_processes = int(hyperparameters.get('num_processes', process_slots_per_host * num_hosts))
+    num_processes = int(hyperparameters.get('sagemaker_num_processes', process_slots_per_host * num_hosts))
 
     # By default, use one process per GPU, or one process per node (if training with CPU).
     host_list = training_env.hosts if process_slots_per_host == 1 else \
         [host + ':{}'.format(process_slots_per_host) for host in training_env.hosts]
 
-    additional_mpi_options = str(hyperparameters.get('additional_mpi_options', ''))
+    additional_mpi_options = str(hyperparameters.get('sagemaker_additional_mpi_options', ''))
 
     credential_vars = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN']
 

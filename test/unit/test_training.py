@@ -170,7 +170,7 @@ def test_get_mpi_command_with_gpus(master_node_distributed_training_env):
 
 
 def test_get_mpi_command_with_num_processes(master_node_distributed_training_env):
-    master_node_distributed_training_env.hyperparameters['num_processes'] = 8
+    master_node_distributed_training_env.hyperparameters['sagemaker_num_processes'] = 8
 
     mpi_command = training._get_mpi_command(master_node_distributed_training_env)
 
@@ -178,7 +178,7 @@ def test_get_mpi_command_with_num_processes(master_node_distributed_training_env
 
 
 def test_get_mpi_command_with_process_slots_per_host(master_node_distributed_training_env):
-    master_node_distributed_training_env.hyperparameters['process_slots_per_host'] = 16
+    master_node_distributed_training_env.hyperparameters['sagemaker_process_slots_per_host'] = 16
 
     mpi_command = training._get_mpi_command(master_node_distributed_training_env)
 
@@ -188,7 +188,7 @@ def test_get_mpi_command_with_process_slots_per_host(master_node_distributed_tra
 def test_get_mpi_command_with_additional_mpi_options(master_node_distributed_training_env):
     another_mpi_option = "-x MY_ENVIRONMENT_VARIABLE"
     master_node_distributed_training_env.hyperparameters[
-        'additional_mpi_options'] = another_mpi_option
+        'sagemaker_additional_mpi_options'] = another_mpi_option
 
     mpi_command = training._get_mpi_command(master_node_distributed_training_env)
 
@@ -277,3 +277,18 @@ def test_can_connect():
     assert not second_call
     assert third_call
     assert mock_socket.connect.call_count == 3
+
+
+def test_use_mpi(single_machine_training_env, user_module):
+    single_machine_training_env.hyperparameters['sagemaker_use_mpi'] = True
+    with patch('chainer_framework.training._change_hostname') as mock_change_hostname, \
+         patch('chainer_framework.training._start_ssh_daemon') as mock_start_ssh_daemon, \
+         patch('chainer_framework.training._wait_for_worker_nodes_to_start_sshd') as mock_wait_for_sshd, \
+         patch('chainer_framework.training._run_mpi_on_all_nodes') as mock_run_mpi:
+
+        training.train(user_module, single_machine_training_env)
+
+        mock_change_hostname.assert_called_once_with(single_machine_training_env.current_host)
+        mock_start_ssh_daemon.assert_called_once()
+        mock_wait_for_sshd.assert_called_once_with(single_machine_training_env.hosts)
+        mock_run_mpi.assert_called_once_with(single_machine_training_env)
