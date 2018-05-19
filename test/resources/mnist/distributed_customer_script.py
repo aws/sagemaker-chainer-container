@@ -78,7 +78,7 @@ if __name__ == '__main__':
     parser.add_argument('--frequency', type=int, default=20)
     parser.add_argument('--units', type=int, default=1000)
 
-    parser.add_argument('--model-dir', type=str, default=training_env.model_dir)
+    parser.add_argument('--model-dir', type=str)
     parser.add_argument('--output_data_dir', type=str, default=training_env.output_data_dir)
     parser.add_argument('--host', type=str, default=training_env.current_host)
     parser.add_argument('--num-gpus', type=int, default=training_env.num_gpus)

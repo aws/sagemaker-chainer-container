@@ -221,8 +221,6 @@ def _create_mpi_script(training_env):
 touch /mpi_is_running
 %s
 EXIT_CODE=$?
-echo ${EXIT_CODE}
-echo @@@@@@@@@@
 touch /mpi_is_finished
 exit ${EXIT_CODE}
 """ % ' '.join(python_cmd))
