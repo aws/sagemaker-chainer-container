@@ -12,6 +12,8 @@ RUN sed -i s/TkAgg/Agg/ matplotlib/mpl-data/matplotlibrc
 # Apply patch to stop Parallel Updater from hanging
 RUN git apply --verbose /parallel_updater.patch
 
+WORKDIR /
+
 COPY dist/sagemaker_chainer_container-1.0-py2.py3-none-any.whl /sagemaker_chainer_container-1.0-py2.py3-none-any.whl
 
 RUN pip2 install --no-cache git+https://github.com/aws/sagemaker-containers@v2.0.0-rc0 && \
