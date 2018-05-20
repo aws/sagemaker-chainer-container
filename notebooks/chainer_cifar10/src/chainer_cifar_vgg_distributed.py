@@ -13,6 +13,7 @@
 
 from __future__ import print_function, absolute_import
 
+import argparse
 import os
 
 import numpy as np
@@ -25,83 +26,73 @@ from chainer import initializers
 from chainer import serializers
 from chainer import training
 from chainer.training import extensions
+from sagemaker_containers import env
 
 import net
 
 
-def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs, model_dir):
-    """
-    This function is called by the Chainer container during training when running on SageMaker with
-    values populated by the training environment.
+if __name__=='__main__':
+    training_env = env.TrainingEnv()
+    num_gpus = training_env.num_gpus
     
-    When running in distributed mode, this function is called with `mpirun`, spawning (by default) one
-    process per GPU (when running with GPU instances), or one process per host (when running with
-    CPU instances). Ranks are initialized in the expected way -- comm.intra_rank refers to the rank of the
-    process on an instance, and comm.inter_rank refers to the rank of the instance.
+    parser = argparse.ArgumentParser()
 
-    Args:
-        hyperparameters (dict): map of hyperparameters given to the training job.
-        num_gpus (int): number of gpus available to the container, determined by instance type.
-        output_data_dir (str): path to the directory to write output artifacts to
-        channel_input_dirs (dict): Dictionary mapping input channel names to local filesystem paths
+    # retrieve the hyperparameters we set in notebook (with some defaults)
+    parser.add_argument('--epochs', type=int, default=30)
+    parser.add_argument('--batch-size', type=int, default=256)
+    parser.add_argument('--learning-rate', type=float, default=0.05)
+    parser.add_argument('--communicator', type=str, default='pure_nccl' if num_gpus > 0 else 'naive')
 
-    Returns:
-        a trained Chainer model
+    # Data and model checkpoints directories
+    parser.add_argument('--output-data-dir', type=str, default=training_env.output_data_dir)
+    parser.add_argument('--model-dir', type=str, default=training_env.model_dir)
+    parser.add_argument('--train', type=str, default=training_env.channel_input_dirs['train'])
+    parser.add_argument('--test', type=str, default=training_env.channel_input_dirs['test'])
     
-    For more on `train`, please visit the sagemaker-python-sdk repository:
-    https://github.com/aws/sagemaker-python-sdk
+    args, _ = parser.parse_known_args()
     
-    For more on the Chainer container, please visit the sagemaker-chainer-containers repository:
-    https://github.com/aws/sagemaker-chainer-containers
-    """
+    train_data = np.load(os.path.join(args.train, 'train.npz'))['data']
+    train_labels = np.load(os.path.join(args.train, 'train.npz'))['labels']
 
-    train_data = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))['data']
-    train_labels = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))['labels']
-
-    test_data = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))['data']
-    test_labels = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))['labels']
+    test_data = np.load(os.path.join(args.test, 'test.npz'))['data']
+    test_labels = np.load(os.path.join(args.test, 'test.npz'))['labels']
 
     train = chainer.datasets.TupleDataset(train_data, train_labels)
     test = chainer.datasets.TupleDataset(test_data, test_labels)
 
-    # retrieve the hyperparameters we set in notebook (with some defaults)
-    batch_size = hyperparameters.get('batch_size', 256)
-    epochs = hyperparameters.get('epochs', 50)
-    learning_rate = hyperparameters.get('learning_rate', 0.05)
-    communicator = hyperparameters.get('communicator', 'pure_nccl' if num_gpus > 0 else 'naive')
+    # Set up a neural network to train.
+    # Classifier reports softmax cross entropy loss and accuracy at every
+    # iteration, which will be used by the PrintReport extension below.
+    model = L.Classifier(net.VGG(10))
 
-    comm = chainermn.create_communicator(communicator)
+    comm = chainermn.create_communicator(args.communicator)
 
     # comm.inter_rank gives the rank of the node. This should only print on one node.
     if comm.inter_rank == 0:
-        print('# Minibatch-size: {}'.format(batch_size))
-        print('# epoch: {}'.format(epochs))
-        print('# learning rate: {}'.format(learning_rate))
-        print('# communicator: {}'.format(communicator))
+        print('# Minibatch-size: {}'.format(args.batch_size))
+        print('# epoch: {}'.format(args.epochs))
+        print('# communicator: {}'.format(args.communicator))
 
     # Set up a neural network to train.
     # Classifier reports softmax cross entropy loss and accuracy at every
     # iteration, which will be used by the PrintReport extension below.
-
-    model = L.Classifier(net.VGG(10))
-    # Make a specified GPU current
 
     # comm.intra_rank gives the rank of the process on a given node.
     device = comm.intra_rank if num_gpus > 0 else -1
     if device >= 0:
         chainer.cuda.get_device_from_id(device).use()
 
-    optimizer = chainermn.create_multi_node_optimizer(chainer.optimizers.MomentumSGD(learning_rate), comm)
+    optimizer = chainermn.create_multi_node_optimizer(chainer.optimizers.MomentumSGD(args.learning_rate), comm)
     optimizer.setup(model)
     optimizer.add_hook(chainer.optimizer.WeightDecay(5e-4))
     
     num_loaders = 2
-    train_iter = chainer.iterators.MultiprocessIterator(train, batch_size, n_processes=num_loaders)
-    test_iter = chainer.iterators.MultiprocessIterator(test, batch_size, repeat=False, n_processes=num_loaders)
+    train_iter = chainer.iterators.MultiprocessIterator(train, args.batch_size, n_processes=num_loaders)
+    test_iter = chainer.iterators.MultiprocessIterator(test, args.batch_size, repeat=False, n_processes=num_loaders)
 
     # Set up a trainer
     updater = training.StandardUpdater(train_iter, optimizer, device=device)
-    trainer = training.Trainer(updater, (epochs, 'epoch'), out=output_data_dir)
+    trainer = training.Trainer(updater, (args.epochs, 'epoch'), out=args.output_data_dir)
 
     # Evaluate the model with the test dataset for each epoch
 
@@ -135,10 +126,12 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs, model_
              'main/accuracy', 'validation/main/accuracy', 'elapsed_time']))
 
     # Run the training
-    serializers.save_npz(os.path.join(model_dir, 'model.npz'), model)
-    
     trainer.run()
-    return model
+    
+    # Save the model (only on one host).
+    if comm.rank == 0:
+        serializers.save_npz(os.path.join(args.model_dir, 'model.npz'), model)
+    
 
 
 def model_fn(model_dir):

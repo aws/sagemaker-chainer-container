@@ -13,6 +13,7 @@
 
 from __future__ import print_function
 
+import argparse
 import os
 
 import numpy as np
@@ -22,7 +23,7 @@ import chainer.links as L
 from chainer import training, serializers
 from chainer.training import extensions
 from chainer.datasets import tuple_dataset
-
+from sagemaker_containers import env
 
 # Define the network to train MNIST
 class MLP(chainer.Chain):
@@ -39,26 +40,36 @@ class MLP(chainer.Chain):
         h2 = F.relu(self.l2(h1))
         return self.l3(h2)
 
-
-# Function to train MNIST. Required.
-def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
-    # Create MNIST dataset objects from files
-    train_images = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))['images']
-    train_labels = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))['labels']
-    test_images = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))['images']
-    test_labels = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))['labels']
     
-    train_dataset = chainer.datasets.TupleDataset(train_images, train_labels)
-    test_dataset = chainer.datasets.TupleDataset(test_images, test_labels)
+if __name__=='__main__':
+    training_env = env.TrainingEnv()
 
-    # Load all hyperparameters
-    batch_size = hyperparameters.get('batch_size', 64)
-    epochs = hyperparameters.get('epochs', 20)
-    frequency = epochs
+    parser = argparse.ArgumentParser()
+
+    # retrieve the hyperparameters we set in notebook (with some defaults)
+    parser.add_argument('--epochs', type=int, default=50)
+    parser.add_argument('--batch-size', type=int, default=64)
+
+    # Data and model checkpoints directories
+    parser.add_argument('--output-data-dir', type=str, default=training_env.output_data_dir)
+    parser.add_argument('--model-dir', type=str, default=training_env.model_dir)
+    parser.add_argument('--train', type=str, default=training_env.channel_input_dirs['train'])
+    parser.add_argument('--test', type=str, default=training_env.channel_input_dirs['test'])
+    
+    args, _ = parser.parse_known_args()
+    
+    train_data = np.load(os.path.join(args.train, 'train.npz'))['images']
+    train_labels = np.load(os.path.join(args.train, 'train.npz'))['labels']
+
+    test_data = np.load(os.path.join(args.test, 'test.npz'))['images']
+    test_labels = np.load(os.path.join(args.test, 'test.npz'))['labels']
+
+    train = chainer.datasets.TupleDataset(train_data, train_labels)
+    test = chainer.datasets.TupleDataset(test_data, test_labels)
 
     # Create the network
     model = L.Classifier(MLP(1000, 10))
-
+    num_gpus = training_env.num_gpus
     # Configure gpu if necessary
     if num_gpus > 0:
         chainer.cuda.get_device_from_id(0).use()
@@ -68,8 +79,8 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
     optimizer.setup(model)
 
     # Load the MNIST dataset
-    train_iter = chainer.iterators.SerialIterator(train_dataset, batch_size)
-    test_iter = chainer.iterators.SerialIterator(test_dataset, batch_size,
+    train_iter = chainer.iterators.SerialIterator(train, args.batch_size)
+    test_iter = chainer.iterators.SerialIterator(test, args.batch_size,
                                                  repeat=False, shuffle=False)
 
     # Set up a trainer
@@ -85,7 +96,7 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
         updater = training.StandardUpdater(train_iter, optimizer, device=device)
 
     # Write output files to output_data_dir. These are zipped and uploaded to S3 output path as output.tar.gz.
-    trainer = training.Trainer(updater, (epochs, 'epoch'), out=output_data_dir)
+    trainer = training.Trainer(updater, (args.epochs, 'epoch'), out=args.output_data_dir)
 
     # Evaluate the model with the test dataset for each epoch
     trainer.extend(extensions.Evaluator(test_iter, model, device=device))
@@ -95,7 +106,7 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
     trainer.extend(extensions.dump_graph('main/loss'))
 
     # Take a snapshot for each specified epoch
-    trainer.extend(extensions.snapshot(), trigger=(frequency, 'epoch'))
+    trainer.extend(extensions.snapshot(), trigger=(args.epochs, 'epoch'))
 
     # Write a log of evaluation statistics for each epoch
     trainer.extend(extensions.LogReport(log_name=None))
@@ -121,12 +132,28 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir):
 
     # Run the training
     trainer.run()
-    return model
+    serializers.save_npz(os.path.join(args.model_dir, 'model.npz'), model)
 
 
-# Function to load model from training. Required.
 def model_fn(model_dir):
-    # This object should be created exactly the same as in training.
+    """
+    This function is called by the Chainer container during hosting when running on SageMaker with
+    values populated by the hosting environment.
+    
+    This function loads models written during training into `model_dir`.
+
+    Args:
+        model_dir (str): path to the directory containing the saved model artifacts
+
+    Returns:
+        a loaded Chainer model
+    
+    For more on `model_fn`, please visit the sagemaker-python-sdk repository:
+    https://github.com/aws/sagemaker-python-sdk
+    
+    For more on the Chainer container, please visit the sagemaker-chainer-containers repository:
+    https://github.com/aws/sagemaker-chainer-containers
+    """
     model = L.Classifier(MLP(1000, 10))
     serializers.load_npz(os.path.join(model_dir, 'model.npz'), model)
     return model.predictor

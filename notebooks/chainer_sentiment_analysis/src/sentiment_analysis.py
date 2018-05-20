@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 
+import argparse
 import os
 import json
 
@@ -20,42 +21,41 @@ import chainer
 from chainer import training
 from chainer import serializers
 from chainer.training import extensions
+from sagemaker_containers import env
 
 import nets
 from nlp_utils import convert_seq, split_text, normalize_text, transform_to_array
 
-# ------------------------------------------------------------ #
-# Training methods                                             #
-# ------------------------------------------------------------ #
 
-def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs, model_dir):
-    """
-    This function is called by the Chainer container during training when running on SageMaker with
-    values populated by the training environment.
+if __name__=='__main__':
+    training_env = env.TrainingEnv()
+    num_gpus = training_env.num_gpus
+    
+    parser = argparse.ArgumentParser()
+    
+    parser.add_argument('--epochs', type=int, default=30)
+    parser.add_argument('--batch-size', type=int, default=64)
+    parser.add_argument('--dropout', type=float, default=0.4)
+    parser.add_argument('--num-layers', type=int, default=1)
+    parser.add_argument('--num-units', type=int, default=300)
+    parser.add_argument('--model-type', type=str, default='rnn')
 
-    Args:
-        hyperparameters (dict): map of hyperparameters given to the training job.
-        num_gpus (int): number of gpus available to the container, determined by instance type.
-        output_data_dir (str): path to the directory to write output artifacts to
-        channel_input_dirs (dict): Dictionary mapping input channel names to local filesystem paths
-        model_dir (str): path to the directory to write model artifacts to.
+    # Data and model checkpoints directories
+    parser.add_argument('--output-data-dir', type=str, default=training_env.output_data_dir)
+    parser.add_argument('--model-dir', type=str, default=training_env.model_dir)
+    parser.add_argument('--train', type=str, default=training_env.channel_input_dirs['train'])
+    parser.add_argument('--test', type=str, default=training_env.channel_input_dirs['test'])
+    parser.add_argument('--vocab', type=str, default=training_env.channel_input_dirs['vocab'])
+    
+    args, _ = parser.parse_known_args()
+    
+    train_data = np.load(os.path.join(args.train, 'train.npz'))['data']
+    train_labels = np.load(os.path.join(args.train, 'train.npz'))['labels']
 
-    Returns:
-        a trained Chainer model
+    test_data = np.load(os.path.join(args.test, 'test.npz'))['data']
+    test_labels = np.load(os.path.join(args.test, 'test.npz'))['labels']
 
-    For more on `train`, please visit the sagemaker-python-sdk repository:
-    https://github.com/aws/sagemaker-python-sdk
-
-    For more on the Chainer container, please visit the sagemaker-chainer-containers repository:
-    https://github.com/aws/sagemaker-chainer-containers
-    """
-    train_data = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))['data']
-    train_labels = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))['labels']
-
-    test_data = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))['data']
-    test_labels = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))['labels']
-
-    vocab = np.load(os.path.join(channel_input_dirs['vocab'], 'vocab.npy')).tolist()
+    vocab = np.load(os.path.join(args.vocab, 'vocab.npy')).tolist()
 
     train = chainer.datasets.TupleDataset(train_data, train_labels)
     test = chainer.datasets.TupleDataset(test_data, test_labels)
@@ -66,31 +66,23 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs, model_
     num_classes = len(set([int(d[1]) for d in train]))
     print('# class: {}'.format(num_classes))
 
-    batch_size = hyperparameters.get('batch_size', 64)
-    epochs = hyperparameters.get('epochs', 30)
-    dropout = hyperparameters.get('dropout', 0.4)
-    num_layers = hyperparameters.get('num_layers', 1)
-    num_units = hyperparameters.get('num_units', 300)
-    model_type = hyperparameters.get('model', 'cnn')
-    num_loaders = hyperparameters.get('num_loaders', 1)
-
-    print('# Minibatch-size: {}'.format(batch_size))
-    print('# epoch: {}'.format(epochs))
-    print('# Dropout: {}'.format(dropout))
-    print('# Layers: {}'.format(num_layers))
-    print('# Units: {}'.format(num_units))
+    print('# Minibatch-size: {}'.format(args.batch_size))
+    print('# epoch: {}'.format(args.epochs))
+    print('# Dropout: {}'.format(args.dropout))
+    print('# Layers: {}'.format(args.num_layers))
+    print('# Units: {}'.format(args.num_units))
 
     # Setup a model
-    if model_type == 'rnn':
+    if args.model_type == 'rnn':
         Encoder = nets.RNNEncoder
-    elif model_type == 'cnn':
+    elif args.model_type == 'cnn':
         Encoder = nets.CNNEncoder
-    elif model_type == 'bow':
+    elif args.model_type == 'bow':
         Encoder = nets.BOWMLPEncoder
     else:
         raise ValueError('model_type must be "rnn", "cnn", or "bow"')
 
-    encoder = Encoder(n_layers=num_layers, n_vocab = len(vocab), n_units=num_units, dropout=dropout)
+    encoder = Encoder(n_layers=args.num_layers, n_vocab = len(vocab), n_units=args.num_units, dropout=args.dropout)
     model = nets.TextClassifier(encoder, num_classes)
 
     # Setup an optimizer
@@ -102,17 +94,17 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs, model_
     device = 0 if num_gpus > 0 else -1  # -1 indicates CPU, 0 indicates first GPU device.
     if num_gpus > 1:
         devices = range(num_gpus)
-        train_iters = [chainer.iterators.SerialIterator(i, batch_size) \
+        train_iters = [chainer.iterators.SerialIterator(i, args.batch_size) \
                     for i in chainer.datasets.split_dataset_n_random(train, len(devices))]
-        test_iter = chainer.iterators.SerialIterator(test, batch_size, repeat=False, shuffle=False)
+        test_iter = chainer.iterators.SerialIterator(test, args.batch_size, repeat=False, shuffle=False)
         updater = training.updaters.MultiprocessParallelUpdater(train_iters, optimizer,
                                                                 converter=convert_seq, devices=range(num_gpus))
     else:
-        train_iter = chainer.iterators.SerialIterator(train, batch_size)
-        test_iter = chainer.iterators.SerialIterator(test, batch_size, repeat=False, shuffle=False)
+        train_iter = chainer.iterators.SerialIterator(train, args.batch_size)
+        test_iter = chainer.iterators.SerialIterator(test, args.batch_size, repeat=False, shuffle=False)
         updater = training.updater.StandardUpdater(train_iter, optimizer, converter=convert_seq, device=device)
 
-    trainer = training.Trainer(updater, (epochs, 'epoch'), out=output_data_dir)
+    trainer = training.Trainer(updater, (args.epochs, 'epoch'), out=args.output_data_dir)
 
     # Evaluate the model with the test dataset for each epoch
     trainer.extend(extensions.Evaluator(test_iter, model, converter=convert_seq, device=device))
@@ -139,10 +131,10 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs, model_
     # Save additional model settings, which will be used to reconstruct the model during hosting
     model_setup = {}
     model_setup['num_classes'] = num_classes
-    model_setup['model_type'] = model_type
-    model_setup['num_layers'] = num_layers
-    model_setup['num_units'] = num_units
-    model_setup['dropout'] = dropout
+    model_setup['model_type'] = args.model_type
+    model_setup['num_layers'] = args.num_layers
+    model_setup['num_units'] = args.num_units
+    model_setup['dropout'] = args.dropout
 
     # Run the training
     trainer.run()
@@ -152,16 +144,22 @@ def train(hyperparameters, num_gpus, output_data_dir, channel_input_dirs, model_
     # artifact output.tar.gz.
 
     # load the best model
-    serializers.load_npz(os.path.join(output_data_dir, 'best_model.npz'), model)
+    serializers.load_npz(os.path.join(args.output_data_dir, 'best_model.npz'), model)
 
     # remove the best model from output artifacts (since it will be saved as a model artifact)
-    os.remove(os.path.join(output_data_dir, 'best_model.npz'))
+    os.remove(os.path.join(args.output_data_dir, 'best_model.npz'))
     
-    model_with_vocab_and_setup = (model, vocab, model_setup)
+    #model_with_vocab_and_setup = (model, vocab, model_setup)
     
-    save(model_with_vocab_and_setup, model_dir)
+    #save(model_with_vocab_and_setup, args.model_dir)
     
-    return model, vocab, model_setup
+    #trained_model, vocab, model_setup = model
+    
+    serializers.save_npz(os.path.join(args.model_dir, 'my_model.npz'), model)
+    with open(os.path.join(args.model_dir, 'vocab.json'), 'w') as f:
+        json.dump(vocab, f)
+    with open(os.path.join(args.model_dir, 'args.json'), 'w') as f:
+        json.dump(model_setup, f)
 
 
 def save(model, model_dir):
@@ -173,7 +171,7 @@ def save(model, model_dir):
         json.dump(vocab, f)
     with open(os.path.join(model_dir, 'args.json'), 'w') as f:
         json.dump(model_setup, f)
-
+    
 
 
 # ------------------------------------------------------------ #
