@@ -28,14 +28,10 @@ def model_fn(model_dir):
     For more on the Chainer container, please visit the sagemaker-chainer-containers repository:
     https://github.com/aws/sagemaker-chainer-containers
     """
-
     # Loads a pretrained SSD model.
+    chainer.config.train = False
     path = os.path.join(model_dir, 'ssd_model.npz')
     model = SSD300(n_fg_class=len(voc_bbox_label_names), pretrained_model=path)
-    # If the endpoint instance has GPUs, copy the model to the GPU:
-    if chainer.cuda.available:
-        chainer.cuda.get_device(0).use()  # Make a specified GPU current
-        model.to_gpu() # Copy model to GPU.
     return model
     
 
