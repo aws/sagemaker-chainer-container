@@ -255,8 +255,7 @@ def test_wait_for_worker_nodes_to_start_sshd_timeout(master_node_distributed_tra
         mock_can_connect.return_value = False
 
         with pytest.raises(timeout.TimeoutError):
-            training._wait_for_worker_nodes_to_start_sshd(hosts, interval=0.001,
-                                                          timeout_in_seconds=0.0001)
+            training._wait_for_worker_nodes_to_start_sshd(hosts, interval=1, timeout_in_seconds=0.1)
 
 
 def test_get_master_host_name(master_node_distributed_training_env):
