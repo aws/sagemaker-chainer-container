@@ -23,7 +23,7 @@ import chainer.links as L
 from chainer import training, serializers
 from chainer.training import extensions
 from chainer.datasets import tuple_dataset
-from sagemaker_containers import env
+import sagemaker_containers
 
 # Define the network to train MNIST
 class MLP(chainer.Chain):
@@ -42,7 +42,7 @@ class MLP(chainer.Chain):
 
     
 if __name__=='__main__':
-    training_env = env.TrainingEnv()
+    training_env = sagemaker_containers.training_env()
 
     parser = argparse.ArgumentParser()
 
@@ -50,7 +50,7 @@ if __name__=='__main__':
     parser.add_argument('--epochs', type=int, default=50)
     parser.add_argument('--batch-size', type=int, default=64)
 
-    # Data and model checkpoints directories
+    # Data, model, and output directories. These are required.
     parser.add_argument('--output-data-dir', type=str, default=training_env.output_data_dir)
     parser.add_argument('--model-dir', type=str, default=training_env.model_dir)
     parser.add_argument('--train', type=str, default=training_env.channel_input_dirs['train'])

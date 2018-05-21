@@ -26,13 +26,13 @@ from chainer import initializers
 from chainer import serializers
 from chainer import training
 from chainer.training import extensions
-from sagemaker_containers import env
+import sagemaker_containers
 
 import net
 
 
 if __name__=='__main__':
-    training_env = env.TrainingEnv()
+    training_env = sagemaker_containers.training_env()
     num_gpus = training_env.num_gpus
     
     parser = argparse.ArgumentParser()
@@ -43,7 +43,7 @@ if __name__=='__main__':
     parser.add_argument('--learning-rate', type=float, default=0.05)
     parser.add_argument('--communicator', type=str, default='pure_nccl' if num_gpus > 0 else 'naive')
 
-    # Data and model checkpoints directories
+    # Data, model, and output directories. These are required.
     parser.add_argument('--output-data-dir', type=str, default=training_env.output_data_dir)
     parser.add_argument('--model-dir', type=str, default=training_env.model_dir)
     parser.add_argument('--train', type=str, default=training_env.channel_input_dirs['train'])
