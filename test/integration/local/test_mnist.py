@@ -92,7 +92,7 @@ def test_chainer_mnist_distributed(docker_image, opt_ml, use_gpu):
     # pure_nccl communicator hangs when only one gpu is available.
     hyperparameters = {'sagemaker_process_slots_per_host': 1,
                        'sagemaker_num_processes': cluster_size,
-                       'batch_size': 10000,
+                       'batch-size': 10000,
                        'epochs': 1,
                        'communicator': 'hierarchical'}
 

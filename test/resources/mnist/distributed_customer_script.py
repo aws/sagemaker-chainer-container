@@ -71,13 +71,13 @@ if __name__ == '__main__':
 
     # Data and model checkpoints directories
     parser.add_argument('--epochs', type=int)
-    parser.add_argument('--batch_size', type=int)
+    parser.add_argument('--batch-size', type=int)
     parser.add_argument('--communicator', type=str, default='pure_nccl')
     parser.add_argument('--frequency', type=int, default=20)
     parser.add_argument('--units', type=int, default=1000)
 
     parser.add_argument('--model-dir', type=str)
-    parser.add_argument('--output_data_dir', type=str, default=env.output_data_dir)
+    parser.add_argument('--output-data-dir', type=str, default=env.output_data_dir)
     parser.add_argument('--host', type=str, default=env.current_host)
     parser.add_argument('--num-gpus', type=int, default=env.num_gpus)
 

@@ -27,7 +27,7 @@ if __name__ == '__main__':
                         default='naive' if env.num_gpus == 0 else 'pure_nccl')
     parser.add_argument('--current_host', type=str, default=env.current_host)
     parser.add_argument('--hosts', type=str, default=env.hosts)
-    parser.add_argument('--output_data_dir', type=str, default=env.output_data_dir)
+    parser.add_argument('--output-data-dir', type=str, default=env.output_data_dir)
 
     args = parser.parse_args()
 
