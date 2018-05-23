@@ -41,3 +41,8 @@ COPY changehostname.c /
 COPY change-hostname.sh /usr/local/bin/change-hostname.sh
 
 RUN chmod +x /usr/local/bin/change-hostname.sh
+
+# Patch fixes hanging issue with MultiProcessParallelUpdater.
+# This patch is applied in final images.
+# From https://github.com/chainer/chainer/pull/4756
+COPY parallel_updater.patch /parallel_updater.patch
