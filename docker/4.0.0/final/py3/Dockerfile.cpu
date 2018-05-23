@@ -18,7 +18,7 @@ WORKDIR /
 
 COPY dist/sagemaker_chainer_container-1.0-py2.py3-none-any.whl /sagemaker_chainer_container-1.0-py2.py3-none-any.whl
 
-RUN pip3 install --no-cache git+https://github.com/aws/sagemaker-containers@v2.0.0-rc0 && \
+RUN pip3 install -U --no-cache git+https://github.com/aws/sagemaker-containers@v2.0.0-rc05 && \
     pip3 install --no-cache /sagemaker_chainer_container-1.0-py2.py3-none-any.whl
 
 ENV SAGEMAKER_TRAINING_MODULE chainer_framework.training:main

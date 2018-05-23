@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import print_function
 
+import argparse
 import os
 
 import chainer
@@ -21,6 +22,8 @@ import chainer.functions as F
 import chainer.links as L
 from chainer.training import extensions
 import numpy as np
+
+import sagemaker_containers
 
 
 class MLP(chainer.Chain):
@@ -59,33 +62,44 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb
         return images
 
 
-def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir, model_dir):
-    train_file = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))
-    test_file = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))
+if __name__ == '__main__':
+    env = sagemaker_containers.training_env()
 
-    preprocess_mnist_options = {
-        'withlabel': True,
-        'ndim': 1,
-        'scale': 1.,
-        'image_dtype': np.float32,
-        'label_dtype': np.int32,
-        'rgb_format': False
-    }
+    parser = argparse.ArgumentParser()
+
+    # Data and model checkpoints directories
+    parser.add_argument('--units', type=int, default=1000)
+    parser.add_argument('--epochs', type=int, default=20)
+    parser.add_argument('--frequency', type=int, default=20)
+    parser.add_argument('--batch-size', type=int, default=100)
+    parser.add_argument('--model-dir', type=str, default=env.model_dir)
+
+    parser.add_argument('--train', type=str, default=env.channel_input_dirs['train'])
+    parser.add_argument('--test', type=str, default=env.channel_input_dirs['test'])
+
+    parser.add_argument('--num-gpus', type=int, default=env.num_gpus)
+
+    args = parser.parse_args()
+
+    train_file = np.load(os.path.join(args.train, 'train.npz'))
+    test_file = np.load(os.path.join(args.test, 'test.npz'))
+
+    preprocess_mnist_options = {'withlabel': True,
+                                'ndim': 1,
+                                'scale': 1.,
+                                'image_dtype': np.float32,
+                                'label_dtype': np.int32,
+                                'rgb_format': False}
 
     train = _preprocess_mnist(train_file, **preprocess_mnist_options)
     test = _preprocess_mnist(test_file, **preprocess_mnist_options)
 
-    batch_size = hyperparameters.get('batch_size', 800)
-    epochs = hyperparameters.get('epochs', 20)
-    frequency = hyperparameters.get('frequency', epochs)
-    units = hyperparameters.get('unit', 1000)
-
     # Set up a neural network to train
     # Classifier reports softmax cross entropy loss and accuracy at every
     # iteration, which will be used by the PrintReport extension below.
-    model = L.Classifier(MLP(units, 10))
+    model = L.Classifier(MLP(args.units, 10))
 
-    if num_gpus > 0:
+    if chainer.cuda.available:
         chainer.cuda.get_device_from_id(0).use()
 
     # Setup an optimizer
@@ -93,25 +107,31 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir, model_
     optimizer.setup(model)
 
     # Load the MNIST dataset
-    train_iter = chainer.iterators.SerialIterator(train, batch_size)
-    test_iter = chainer.iterators.SerialIterator(test, batch_size, repeat=False, shuffle=False)
+    train_iter = chainer.iterators.SerialIterator(train, args.batch_size)
+    test_iter = chainer.iterators.SerialIterator(test, args.batch_size,
+                                                 repeat=False, shuffle=False)
 
     # Set up a trainer
-    device = 0 if num_gpus > 0 else -1  # -1 indicates CPU, 0 indicates first GPU device.
-    if num_gpus > 0:
+    device = 0 if chainer.cuda.available else -1  # -1 indicates CPU, 0 indicates first GPU device.
+    if chainer.cuda.available:
+
+        def device_name(device_intra_rank):
+            return 'main' if device_intra_rank == 0 else str(device_intra_rank)
+
+
+        devices = {device_name(device): device for device in range(args.num_gpus)}
         updater = training.updater.ParallelUpdater(
             train_iter,
             optimizer,
             # The device of the name 'main' is used as a "master", while others are
             # used as slaves. Names other than 'main' are arbitrary.
-            devices={('main' if device == 0 else str(device)): device
-                     for device in range(num_gpus)})
+            devices=devices)
     else:
         updater = training.updater.StandardUpdater(train_iter, optimizer, device=device)
 
-    # Write output files to output_data_dir. These are zipped and uploaded to S3 output path as
-    # output.tar.gz.
-    trainer = training.Trainer(updater, (epochs, 'epoch'), out=output_data_dir)
+    # Write output files to output_data_dir.
+    # These are zipped and uploaded to S3 output path as output.tar.gz.
+    trainer = training.Trainer(updater, (args.epochs, 'epoch'), out=env.output_data_dir)
 
     # Evaluate the model with the test dataset for each epoch
 
@@ -122,7 +142,7 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir, model_
     trainer.extend(extensions.dump_graph('main/loss'))
 
     # Take a snapshot for each specified epoch
-    trainer.extend(extensions.snapshot(), trigger=(frequency, 'epoch'))
+    trainer.extend(extensions.snapshot(), trigger=(args.frequency, 'epoch'))
 
     # Write a log of evaluation statistics for each epoch
     trainer.extend(extensions.LogReport())
@@ -142,11 +162,9 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir, model_
     # "validation" refers to the default name of the Evaluator extension.
     # Entries other than 'epoch' are reported by the Classifier link, called by
     # either the updater or the evaluator.
-    trainer.extend(
-        extensions.PrintReport([
-            'epoch', 'main/loss', 'validation/main/loss', 'main/accuracy',
-            'validation/main/accuracy', 'elapsed_time'
-        ]))
+    trainer.extend(extensions.PrintReport(
+        ['epoch', 'main/loss', 'validation/main/loss',
+         'main/accuracy', 'validation/main/accuracy', 'elapsed_time']))
 
     # Print a progress bar to stdout
     trainer.extend(extensions.ProgressBar())
@@ -154,8 +172,7 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir, model_
     # Run the training
     trainer.run()
 
-    serializers.save_npz(os.path.join(model_dir, 'model.npz'), model)
-    return model
+    serializers.save_npz(os.path.join(args.model_dir, 'model.npz'), model)
 
 
 def model_fn(model_dir):

@@ -36,10 +36,8 @@ RUN mkdir /var/run/sshd && \
 
 COPY changehostname.c /
 COPY change-hostname.sh /usr/local/bin/change-hostname.sh
-COPY mpi_script.sh /mpi_script.sh
 
-RUN chmod +x /usr/local/bin/change-hostname.sh && \
-    chmod +x /mpi_script.sh
+RUN chmod +x /usr/local/bin/change-hostname.sh
 
 # Patch fixes hanging issue with MultiProcessParallelUpdater.
 # This patch is applied in final images.

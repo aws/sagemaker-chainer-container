@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import print_function
 
+import argparse
 import logging
 import os
 
@@ -23,7 +24,7 @@ import chainer.links as L
 from chainer.training import extensions
 import chainermn
 import numpy as np
-
+import sagemaker_containers
 
 logger = logging.getLogger('user_script')
 logger.setLevel(logging.INFO)
@@ -63,25 +64,46 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb
     return images
 
 
-def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir, current_host, model_dir):
-    logger.info('Current host: {}'.format(current_host))
-    batch_size = hyperparameters.get('batch_size', 200)
-    epochs = hyperparameters.get('epochs', 20)
-    frequency = hyperparameters.get('frequency', epochs)
-    units = hyperparameters.get('unit', 1000)
-    communicator = 'naive' if num_gpus == 0 else hyperparameters.get('communicator', 'pure_nccl')
+if __name__ == '__main__':
+    env = sagemaker_containers.training_env()
+
+    parser = argparse.ArgumentParser()
+
+    # Data and model checkpoints directories
+    parser.add_argument('--epochs', type=int)
+    parser.add_argument('--batch-size', type=int)
+    parser.add_argument('--communicator', type=str, default='pure_nccl')
+    parser.add_argument('--frequency', type=int, default=20)
+    parser.add_argument('--units', type=int, default=1000)
+
+    parser.add_argument('--model-dir', type=str)
+    parser.add_argument('--output-data-dir', type=str, default=env.output_data_dir)
+    parser.add_argument('--host', type=str, default=env.current_host)
+    parser.add_argument('--num-gpus', type=int, default=env.num_gpus)
+
+    parser.add_argument('--train', type=str, default=env.channel_input_dirs['train'])
+    parser.add_argument('--test', type=str, default=env.channel_input_dirs['test'])
+
+    args = parser.parse_args()
+
+    train_file = np.load(os.path.join(args.train, 'train.npz'))
+    test_file = np.load(os.path.join(args.test, 'test.npz'))
+
+    logger.info('Current host: {}'.format(args.host))
+
+    communicator = 'naive' if args.num_gpus == 0 else args.communicator
 
     comm = chainermn.create_communicator(communicator)
-    device = comm.intra_rank if num_gpus > 0 else -1
+    device = comm.intra_rank if args.num_gpus > 0 else -1
 
     print('==========================================')
     print('Using {} communicator'.format(comm))
-    print('Num unit: {}'.format(units))
-    print('Num Minibatch-size: {}'.format(batch_size))
-    print('Num epoch: {}'.format(epochs))
+    print('Num unit: {}'.format(args.units))
+    print('Num Minibatch-size: {}'.format(args.batch_size))
+    print('Num epoch: {}'.format(args.epochs))
     print('==========================================')
 
-    model = L.Classifier(MLP(units, 10))
+    model = L.Classifier(MLP(args.units, 10))
     if device >= 0:
         chainer.cuda.get_device(device).use()
 
@@ -90,8 +112,8 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir, curren
         chainer.optimizers.Adam(), comm)
     optimizer.setup(model)
 
-    train_file = np.load(os.path.join(channel_input_dirs['train'], 'train.npz'))
-    test_file = np.load(os.path.join(channel_input_dirs['test'], 'test.npz'))
+    train_file = np.load(os.path.join(args.train, 'train.npz'))
+    test_file = np.load(os.path.join(args.test, 'test.npz'))
 
     preprocess_mnist_options = {
         'withlabel': True,
@@ -105,12 +127,12 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir, curren
     train_dataset = _preprocess_mnist(train_file, **preprocess_mnist_options)
     test_dataset = _preprocess_mnist(test_file, **preprocess_mnist_options)
 
-    train_iter = chainer.iterators.SerialIterator(train_dataset, batch_size)
+    train_iter = chainer.iterators.SerialIterator(train_dataset, args.batch_size)
     test_iter = chainer.iterators.SerialIterator(
-        test_dataset, batch_size, repeat=False, shuffle=False)
+        test_dataset, args.batch_size, repeat=False, shuffle=False)
 
     updater = training.StandardUpdater(train_iter, optimizer, device=device)
-    trainer = training.Trainer(updater, (epochs, 'epoch'), out=output_data_dir)
+    trainer = training.Trainer(updater, (args.epochs, 'epoch'), out=args.output_data_dir)
 
     # Create a multi node evaluator from a standard Chainer evaluator.
     evaluator = extensions.Evaluator(test_iter, model, device=device)
@@ -131,7 +153,7 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir, curren
                     ['main/accuracy', 'validation/main/accuracy'],
                     'epoch',
                     file_name='accuracy.png'))
-        trainer.extend(extensions.snapshot(), trigger=(frequency, 'epoch'))
+        trainer.extend(extensions.snapshot(), trigger=(args.frequency, 'epoch'))
         trainer.extend(extensions.dump_graph('main/loss'))
         trainer.extend(extensions.LogReport())
         trainer.extend(
@@ -144,10 +166,8 @@ def train(channel_input_dirs, hyperparameters, num_gpus, output_data_dir, curren
     trainer.run()
 
     # only save the model in the master node
-    if current_host == 'algo-1':
-        serializers.save_npz(os.path.join(model_dir, 'model.npz'), model)
-
-    return model
+    if args.host == 'algo-1':
+        serializers.save_npz(os.path.join(env.model_dir, 'model.npz'), model)
 
 
 def model_fn(model_dir):

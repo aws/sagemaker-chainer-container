@@ -15,7 +15,8 @@ import logging
 
 import chainer
 import numpy as np
-from sagemaker_containers import content_types, encoders, env, modules, transformer, worker
+from sagemaker_containers.beta.framework import (content_types, encoders, env, modules, transformer,
+                                                 worker)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -99,7 +100,7 @@ def _user_module_transformer(user_module):
 
 def main(environ, start_response):
     serving_env = env.ServingEnv()
-    user_module = modules.download_and_import(serving_env.module_dir, serving_env.module_name)
+    user_module = modules.import_module_from_s3(serving_env.module_dir, serving_env.module_name)
 
     user_module_transformer = _user_module_transformer(user_module)
 

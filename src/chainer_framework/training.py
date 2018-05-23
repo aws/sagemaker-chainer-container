@@ -14,13 +14,14 @@ import logging
 import os
 import shlex
 import socket
+import stat
 import subprocess
+import sys
+import textwrap
 import time
-import traceback
 
 from retrying import retry
-from sagemaker_containers import env, functions, modules
-
+import sagemaker_containers.beta.framework as framework
 from chainer_framework.timeout import timeout
 
 logger = logging.getLogger(__name__)
@@ -35,7 +36,7 @@ _CHANGE_HOSTNAME_LIBRARY = "/libchangehostname.so"
 MODEL_FILE_NAME = "model.npz"
 
 
-def train(user_module, training_env):
+def train(env, hyperparameters):
     """Runs Chainer training on a user supplied module in either a local or distributed
     SageMaker environment.
 
@@ -48,39 +49,41 @@ def train(user_module, training_env):
     The following is a list of other hyperparameters that can be used to change training behavior.
     None of these hyperparameters are required:
 
-    * `use_mpi`: force use of MPI so that ChainerMN scripts can be run on a single host.
-    * `process_slots_per_host`: the number of process slots per host.
-    * `num_processes`: the total number of processes to run.
-    * `additional_mpi_options`: a string of options to pass to mpirun.
+    * `sagemaker_use_mpi`: force use of MPI so that ChainerMN scripts can be run on a single host.
+    * `sagemaker_process_slots_per_host`: the number of process slots per host.
+    * `sagemaker_num_processes`: the total number of processes to run.
+    * `sagemaker_additional_mpi_options`: a string of options to pass to mpirun.
 
     For more on how distributed training uses these parameters, please see :func:`_get_mpi_command`.
-
-    Args:
-        user_module : a user supplied module.
-        training_env : training environment object containing environment variables,
-                               training arguments and hyperparameters
     """
 
-    use_mpi = bool(training_env.hyperparameters.get('sagemaker_use_mpi', len(training_env.hosts) > 1))
+    use_mpi = bool(hyperparameters.get('sagemaker_use_mpi', len(env.hosts) > 1))
 
     if use_mpi:
-        current_host = training_env.current_host
-        hosts = list(training_env.hosts)
+
+        current_host = env.current_host
+        hosts = list(env.hosts)
         _change_hostname(current_host)
         _start_ssh_daemon()
+
+        _create_mpi_script(env)
+
         if current_host == _get_master_host_name(hosts):
             _wait_for_worker_nodes_to_start_sshd(hosts)
-            _run_mpi_on_all_nodes(training_env)
+
+            _run_mpi_on_all_nodes(env, hyperparameters)
         else:
-            _wait_for_training_to_finish(training_env)
+            _wait_for_training_to_finish(env)
     else:
-        _run_training(training_env, user_module)
+        _run_training(env)
 
 
-def _run_training(env, user_module):
-    training_parameters = functions.matching_args(user_module.train, env)
+def _run_training(env):
     logger.info('Invoking user training script.')
-    user_module.train(**training_parameters)
+
+    args = framework.mapping.to_cmd_args(env.hyperparameters)
+
+    framework.modules.run_module_from_s3(env.module_dir, args, env.module_name)
 
 
 def _change_hostname(current_host):
@@ -97,30 +100,31 @@ def _get_master_host_name(hosts):
     return sorted(hosts)[0]
 
 
-def _run_mpi_on_all_nodes(training_env):
-    mpi_command = _get_mpi_command(training_env)
+def _run_mpi_on_all_nodes(env, hyperparameters):
+    mpi_command = _get_mpi_command(env, hyperparameters)
     logger.info("mpi_command: %s", mpi_command)
+
     subprocess.check_call(shlex.split(mpi_command))
 
 
-def _get_mpi_command(training_env):
+def _get_mpi_command(env, hyperparameters):
     """Constructs a command to run distributed training with MPI using mpirun.
 
     Runs /mpi_script.sh on all hosts listed in the training environment. How many
-    processes in total is determined by the 'num_processes' hyperparameter, or one
-    per GPU, or one per CPU, as applicable. The 'process_slots_per_host'
+    processes in total is determined by the 'sagemaker_num_processes' hyperparameter, or one
+    per GPU, or one per CPU, as applicable. The 'sagemaker_process_slots_per_host'
     hyperparameter can be used to override how many processes can be placed on each host.
 
     Additional MPI options can be passed (and override other MPI options) using the
-    'additional_mpi_options' hyperparameter.
+    'sagemaker_additional_mpi_options' hyperparameter.
 
     This command passes many options to the mpirun command:
 
     * --host [host:slots]: A comma-delimited list of hosts and the number of process
         slots on each host.
-    * -mca btl_tcp_if_include [training_env.network_interface_name]: Tell OpenMPI to use
+    * -mca btl_tcp_if_include [env.network_interface_name]: Tell OpenMPI to use
         the given network interface name for byte transfer layer communication.
-    * -mca oob_tcp_if_include [training_env.network_interface_name]: Tell OpenMPI to use
+    * -mca oob_tcp_if_include [env.network_interface_name]: Tell OpenMPI to use
         the given network interface name for out-of-band communication.
     * -mca btl ^openib: Don't look for openib components (this just avoids a warning)
     * -x PATH: pass $PATH from the current environment to the execution environments on remote hosts
@@ -131,46 +135,45 @@ def _get_mpi_command(training_env):
     * -mca orte_abort_on_non_zero_status 1: Return a non-zero exit code if any process exits
         with a non-zero exit code.
     * -x NCCL_DEBUG=INFO: Enable info level logging for NCCL.
-    * -x NCCL_SOCKET_IFNAME=[training_env.network_interface_name]: Tell NCCL to use the given
+    * -x NCCL_SOCKET_IFNAME=[env.network_interface_name]: Tell NCCL to use the given
         network interface name for socket communication.
     * -np [num_processes]: total number of processes to run across all nodes.
 
     Args:
-        training_env: training environment object containing environment variables,
+        env: training environment object containing environment variables,
                               training arguments and hyperparameters.
 
     Returns:
         str: The mpirun command to run.
     """
-    num_gpus = training_env.num_gpus
-    hyperparameters = training_env.hyperparameters
-    is_gpu = num_gpus if num_gpus > 0 else 1
+    is_gpu = env.num_gpus if env.num_gpus > 0 else 1
 
     process_slots_per_host = int(hyperparameters.get('sagemaker_process_slots_per_host', is_gpu))
 
-    num_hosts = len(training_env.hosts)
-    num_processes = int(hyperparameters.get('sagemaker_num_processes', process_slots_per_host * num_hosts))
+    num_hosts = len(env.hosts)
+    num_processes = process_slots_per_host * num_hosts
+    num_processes = int(hyperparameters.get('sagemaker_num_processes', num_processes))
 
     # By default, use one process per GPU, or one process per node (if training with CPU).
-    host_list = training_env.hosts if process_slots_per_host == 1 else \
-        [host + ':{}'.format(process_slots_per_host) for host in training_env.hosts]
+    host_list = env.hosts if process_slots_per_host == 1 else \
+        [host + ':{}'.format(process_slots_per_host) for host in env.hosts]
 
     additional_mpi_options = str(hyperparameters.get('sagemaker_additional_mpi_options', ''))
 
     credential_vars = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN']
 
-    logger.info('network interface name: %s', training_env.network_interface_name)
+    logger.info('network interface name: %s', env.network_interface_name)
 
     mpi_command = 'mpirun --allow-run-as-root --host {}'.format(",".join(host_list)) \
-                  + " -mca btl_tcp_if_include {}".format(training_env.network_interface_name) \
-                  + " -mca oob_tcp_if_include {}".format(training_env.network_interface_name) \
+                  + " -mca btl_tcp_if_include {}".format(env.network_interface_name) \
+                  + " -mca oob_tcp_if_include {}".format(env.network_interface_name) \
                   + " -mca btl ^openib" \
                   + " -x PATH" \
                   + " -x LD_LIBRARY_PATH" \
                   + " -x LD_PRELOAD={}".format(_CHANGE_HOSTNAME_LIBRARY) \
                   + " -mca orte_abort_on_non_zero_status 1" \
                   + " -x NCCL_DEBUG=INFO" \
-                  + " -x NCCL_SOCKET_IFNAME={}".format(training_env.network_interface_name) \
+                  + " -x NCCL_SOCKET_IFNAME={}".format(env.network_interface_name) \
                   + " -np {} ".format(num_processes)
 
     for v in credential_vars:
@@ -178,17 +181,55 @@ def _get_mpi_command(training_env):
             mpi_command += " -x {}".format(v)
 
     mpi_command += " {} ".format(additional_mpi_options) + " {}".format(_MPI_SCRIPT)
+
     return mpi_command
+
+
+def _create_mpi_script(env):
+    """Creates a MPI script with user provided information.
+
+        For distributed training: the 'master node' runs mpirun with this script,
+        '/mpi_script.sh'.
+
+        This script creates a file '/mpi_is_running' that worker nodes use to
+        determine whether training # (started by MPI from the master node) is still running.
+
+        Processes on worker nodes use # /mpi_is_finished file to determine when to exit.
+
+    Args:
+        env (TrainingEnv): an instance of the training environment.
+    """
+    hyperparameters = framework.mapping.to_cmd_args(env.hyperparameters)
+    channels = framework.mapping.to_cmd_args(env.channel_input_dirs)
+    framework.modules.download_and_install(env.module_dir)
+
+    python_cmd = [sys.executable, '-m', 'mpi4py', '-m', env.module_name]
+    python_cmd.extend(hyperparameters)
+    python_cmd.extend(channels)
+
+    content = textwrap.dedent("""#!/usr/bin/env bash
+touch /mpi_is_running
+%s
+EXIT_CODE=$?
+touch /mpi_is_finished
+exit ${EXIT_CODE}
+""" % ' '.join(python_cmd))
+
+    with open(_MPI_SCRIPT, 'w') as w:
+        w.write(content)
+
+    st = os.stat(_MPI_SCRIPT)
+    os.chmod(_MPI_SCRIPT, st.st_mode | stat.S_IEXEC)
 
 
 def _start_ssh_daemon():
     subprocess.Popen(["/usr/sbin/sshd", "-D"])
 
 
-def _wait_for_training_to_finish(training_env):
-    current_host = training_env.current_host
+def _wait_for_training_to_finish(env):
+    current_host = env.current_host
 
-    logger.info("worker node {} is waiting for MPI to start training process %s", current_host)
+    logger.info("worker node %s is waiting for MPI to start training process", current_host)
     _wait_for_mpi_to_start_running()
 
     logger.info("MPI started training process on worker node %s", current_host)
@@ -234,37 +275,13 @@ def _wait_until_mpi_stops_running():
     return os.path.isfile(_MPI_IS_FINISHED)
 
 
-# TODO: this should come from sagemaker_containers, once it's implemented there
-def write_success_file(output_dir):
-    success_file = os.path.join(output_dir, 'success')
-    open(success_file, 'w').close()
-
-
-# TODO: this should come from sagemaker_containers, once it's implemented there
-def write_failure_file(message, output_dir):
-    failure_file = os.path.join(output_dir, 'failure')
-    with open(failure_file, 'a') as fd:
-        fd.write(message)
-
-
 def main():
-    training_env = env.TrainingEnv()
+    hyperparameters = framework.env.read_hyperparameters()
+    env = framework.training_env(hyperparameters=hyperparameters)
 
-    mod = modules.download_and_import(training_env.module_dir, training_env.module_name)
-
-    try:
-        train(mod, training_env)
-
-        write_success_file(training_env.output_dir)
-    except Exception as e:
-        trc = traceback.format_exc()
-        message = 'uncaught exception during training: {}\n{}\n'.format(e, trc)
-        logger.error(message)
-        write_failure_file(message, training_env.output_dir)
+    train(env, hyperparameters)
 
 
 # This branch hit by mpi_script.sh (see docker base directory)
 if __name__ == '__main__':
-    _training_env = env.TrainingEnv()
-    _user_module = modules.download_and_import(_training_env.module_dir, _training_env.module_name)
-    _run_training(_training_env, _user_module)
+    main()

@@ -25,7 +25,8 @@ def test_all_processes_finish_with_mpi(docker_image, opt_ml, use_gpu):
     customer_script = 'all_processes_finish_customer_script.py'
 
     cluster_size = 2
-    hyperparameters = {'sagemaker_use_mpi': True, 'sagemaker_process_slots_per_host': 2, 'sagemaker_num_processes': 4}
+    hyperparameters = {'sagemaker_use_mpi': True, 'sagemaker_process_slots_per_host': 2,
+                       'sagemaker_num_processes': 4}
 
     local_mode.train(customer_script, resource_path, docker_image, opt_ml,
                      hyperparameters=hyperparameters, source_dir=resource_path, use_gpu=use_gpu,
@@ -43,7 +44,8 @@ def test_training_jobs_do_not_stall(docker_image, opt_ml, use_gpu):
     """
     customer_script = 'training_jobs_do_not_stall_customer_script.py'
     cluster_size = 2
-    hyperparameters = {'sagemaker_use_mpi': True, 'sagemaker_process_slots_per_host': 1, 'sagemaker_num_processes': 2}
+    hyperparameters = {'sagemaker_use_mpi': True, 'sagemaker_process_slots_per_host': 1,
+                       'sagemaker_num_processes': 2}
 
     local_mode.train(customer_script, resource_path, docker_image, opt_ml,
                      hyperparameters=hyperparameters, source_dir=resource_path,
@@ -64,7 +66,7 @@ def test_single_machine_failure(docker_image, opt_ml, use_gpu):
 def test_distributed_failure(docker_image, opt_ml, use_gpu):
     customer_script = 'failure_script.py'
     cluster_size = 2
-    hyperparameters = {'rank': 'inter_rank', 'sagemaker_process_slots_per_host': 1,
+    hyperparameters = {'sagemaker_process_slots_per_host': 1,
                        'sagemaker_num_processes': cluster_size, 'node_to_fail': 1}
 
     local_mode.train(customer_script, resource_path, docker_image, opt_ml,
