@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 import os
 import socket
+import sys
 import tempfile
 
 import chainer
@@ -282,11 +283,11 @@ def test_distributed_training_from_worker_node_use_mpi_with_sagemaker_additional
 
     open().write.assert_called_with("""#!/usr/bin/env bash
 touch /mpi_is_running
-/Users/mvs/miniconda3/envs/35/bin/python -m mpi4py -m imagenet
+%s -m mpi4py -m imagenet
 EXIT_CODE=$?
 touch /mpi_is_finished
 exit ${EXIT_CODE}
-""")
+""" % sys.executable)
 
 
 def test_wait_for_training_to_finish(worker_node_distributed_training_env):
