@@ -49,9 +49,9 @@ def train(env, hyperparameters):
     The following is a list of other hyperparameters that can be used to change training behavior.
     None of these hyperparameters are required:
 
-    * `use_mpi`: force use of MPI so that ChainerMN scripts can be run on a single host.
-    * `process_slots_per_host`: the number of process slots per host.
-    * `num_processes`: the total number of processes to run.
+    * `sagemaker_use_mpi`: force use of MPI so that ChainerMN scripts can be run on a single host.
+    * `sagemaker_process_slots_per_host`: the number of process slots per host.
+    * `sagemaker_num_processes`: the total number of processes to run.
     * `sagemaker_additional_mpi_options`: a string of options to pass to mpirun.
 
     For more on how distributed training uses these parameters, please see :func:`_get_mpi_command`.
