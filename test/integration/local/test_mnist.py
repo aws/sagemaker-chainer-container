@@ -24,7 +24,7 @@ data_dir = os.path.join(mnist_path, 'data')
 def test_chainer_mnist_single_machine(docker_image, opt_ml, use_gpu):
 
     customer_script = 'single_machine_customer_script.py'
-    hyperparameters = {'batch-size': 10000, 'epochs': 1, 'model-dir': '/opt/ml/model'}
+    hyperparameters = {'batch-size': 10000, 'epochs': 1}
 
     local_mode.train(customer_script, data_dir, docker_image, opt_ml,
                      hyperparameters=hyperparameters, source_dir=mnist_path, use_gpu=use_gpu)
@@ -90,8 +90,8 @@ def test_chainer_mnist_distributed(docker_image, opt_ml, use_gpu):
     customer_script = 'distributed_customer_script.py'
     cluster_size = 2
     # pure_nccl communicator hangs when only one gpu is available.
-    hyperparameters = {'process_slots_per_host': 1,
-                       'num_processes': cluster_size,
+    hyperparameters = {'sagemaker_process_slots_per_host': 1,
+                       'sagemaker_num_processes': cluster_size,
                        'batch_size': 10000,
                        'epochs': 1,
                        'communicator': 'hierarchical'}

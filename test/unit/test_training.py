@@ -11,30 +11,19 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 import os
-import shlex
 import socket
 import tempfile
 
 import chainer
 import chainer.links as L
-from mock import call, MagicMock, patch
+from mock import call, MagicMock, patch, mock_open
 import pytest
+from six import PY2
 
 from chainer_framework import timeout, training
 
 
 # pylint: disable=protected-access
-
-
-@pytest.fixture(name='master_node_distributed_training_env')
-def fixture_master_node_distributed_training_env():
-    env = MagicMock()
-    env.current_host = 'algo-1'
-    env.hosts = ['algo-1', 'algo-2']
-    env.hyperparameters = {}
-    env.network_interface_name = "foonetwork"
-    env.num_gpus = 4
-    return env
 
 
 @pytest.fixture(name='worker_node_distributed_training_env')
@@ -83,123 +72,225 @@ class DummyModel(chainer.Chain):
         return self.l1()
 
 
-def test_single_machine_train(single_machine_training_env, user_module, training_state):
-    def user_module_train():
-        training_state.trained = True
-        training_state.model = chainer.Chain()
-        return training_state.model
+def mock_training_env(current_host='algo-1', hosts=None, hyperparameters=None,
+                      module_dir='s3://my/script', module_name='imagenet', **kwargs):
+    hosts = hosts or ['algo-1']
 
-    user_module.train = user_module_train
+    hyperparameters = hyperparameters or {}
 
-    training.train(user_module, single_machine_training_env)
-
-    assert training_state.trained
+    return MagicMock(current_host=current_host, hosts=hosts, hyperparameters=hyperparameters,
+                     module_dir=module_dir, module_name=module_name, **kwargs)
 
 
-def test_distributed_training_from_master_node(master_node_distributed_training_env, user_module):
-    start_ssh_daemon_import = 'chainer_framework.training._wait_for_worker_nodes_to_start_sshd'
-    with patch('chainer_framework.training._change_hostname') as mock_change_hostname, \
-            patch('chainer_framework.training._start_ssh_daemon') as mock_start_ssh_daemon, \
-            patch(start_ssh_daemon_import) as mock_wait_for_sshd, \
-            patch('chainer_framework.training._run_mpi_on_all_nodes') as mock_run_mpi_on_all_nodes:
-        training.train(user_module, master_node_distributed_training_env)
+@patch('sagemaker_containers.beta.framework.modules.run_module_from_s3')
+def test_single_machine(run_module_from_s3):
+    training.train(mock_training_env(hyperparameters={'batch-size': 64}), {})
 
-        mock_change_hostname.assert_called_once_with(
-            master_node_distributed_training_env.current_host)
-        mock_start_ssh_daemon.assert_called_once()
-        mock_wait_for_sshd.assert_called_once_with(
-            master_node_distributed_training_env.hosts)
-        mock_run_mpi_on_all_nodes.assert_called_once_with(
-            master_node_distributed_training_env)
+    run_module_from_s3.assert_called_with('s3://my/script', ['--batch-size', '64'], 'imagenet')
 
 
-def test_distributed_training_from_worker_node(worker_node_distributed_training_env, user_module):
-    wait_for_training_to_finish_import = 'chainer_framework.training._wait_for_training_to_finish'
-    with patch('chainer_framework.training._change_hostname') as mock_change_hostname, \
-            patch('chainer_framework.training._start_ssh_daemon') as mock_start_ssh_daemon, \
-            patch(wait_for_training_to_finish_import) as mock_wait_for_training_to_finish:
-        training.train(user_module, worker_node_distributed_training_env)
+@patch('chainer_framework.training._change_hostname')
+@patch('chainer_framework.training._start_ssh_daemon')
+@patch('chainer_framework.training._wait_for_worker_nodes_to_start_sshd')
+@patch('chainer_framework.training._run_mpi_on_all_nodes')
+@patch('chainer_framework.training._create_mpi_script')
+def test_distributed_training_from_master_node(
+        _create_mpi_script,
+        _run_mpi_on_all_nodes,
+        _wait_for_worker_nodes_to_start_sshd,
+        _start_ssh_daemon,
+        _change_hostname):
+    hosts = ['algo-1', 'algo-2']
+    env = mock_training_env(hosts=hosts)
+    training.train(env, {})
 
-        mock_change_hostname.assert_called_once_with(
-            worker_node_distributed_training_env.current_host)
-        mock_start_ssh_daemon.assert_called_once()
-        mock_wait_for_training_to_finish.assert_called_once_with(
-            worker_node_distributed_training_env)
-
-
-def test_change_hostname(single_machine_training_env):
-    with patch('os.system') as mock_system:
-        training._change_hostname(single_machine_training_env.current_host)
-        mock_system.assert_called_with(
-            "change-hostname.sh {}".format(single_machine_training_env.current_host))
-
-
-def test_run_mpi_on_all_nodes(master_node_distributed_training_env):
-    with patch('subprocess.check_call') as mock_check_call:
-        training._run_mpi_on_all_nodes(master_node_distributed_training_env)
-        mock_check_call.assert_called_with(
-            shlex.split(training._get_mpi_command(master_node_distributed_training_env)))
+    _create_mpi_script.assert_called_with(env)
+    _change_hostname.assert_called_once_with('algo-1')
+    _start_ssh_daemon.assert_called_once()
+    _wait_for_worker_nodes_to_start_sshd.assert_called_once_with(hosts)
+    _run_mpi_on_all_nodes.assert_called_once_with(env, {})
 
 
-def test_get_mpi_command(master_node_distributed_training_env):
-    network_interface_name = 'foonetwork'
-    master_node_distributed_training_env.resource_config = {
-        'network_interface_name': network_interface_name
-    }
-
-    mpi_command = training._get_mpi_command(master_node_distributed_training_env)
-
-    assert "mpirun" in mpi_command
-    assert "--allow-run-as-root" in mpi_command
-    assert "-host algo-1:4,algo-2:4" in mpi_command
-    assert "-mca btl_tcp_if_include {}".format(network_interface_name) in mpi_command
-    assert "-mca oob_tcp_if_include {}".format(network_interface_name) in mpi_command
-    assert "-x PATH" in mpi_command
-    assert "-x LD_LIBRARY_PATH" in mpi_command
-    assert "-x LD_PRELOAD={}".format(training._CHANGE_HOSTNAME_LIBRARY) in mpi_command
-    assert "-mca orte_abort_on_non_zero_status 1" in mpi_command
-    assert "-x NCCL_SOCKET_IFNAME={}".format(network_interface_name) in mpi_command
-    assert "-np 8" in mpi_command
+builtins_open = '__builtin__.open' if PY2 else 'builtins.open'
 
 
-def test_get_mpi_command_with_gpus(master_node_distributed_training_env):
-    master_node_distributed_training_env.num_gpus = 4
+@patch('chainer_framework.training._change_hostname')
+@patch('chainer_framework.training._start_ssh_daemon')
+@patch('chainer_framework.training._wait_for_worker_nodes_to_start_sshd')
+@patch('subprocess.check_call')
+@patch('sagemaker_containers.beta.framework.modules.download_and_install')
+@patch('os.stat')
+@patch('os.chmod')
+@patch(builtins_open, mock_open())
+def test_distributed_training_from_master_node_use_mpi(
+        chmod, stat, download_and_install, check_call,
+        _wait_for_worker_nodes_to_start_sshd, _start_ssh_daemon, _change_hostname):
+    hosts = ['algo-1', 'algo-2']
+    env = mock_training_env(hosts=hosts, num_gpus=0, network_interface_name='foonet')
+    training.train(env, {'sagemaker_use_mpi': True})
 
-    mpi_command = training._get_mpi_command(master_node_distributed_training_env)
-    assert "algo-1:4,algo-2:4" in mpi_command
-
-
-def test_get_mpi_command_with_num_processes(master_node_distributed_training_env):
-    master_node_distributed_training_env.hyperparameters['num_processes'] = 8
-
-    mpi_command = training._get_mpi_command(master_node_distributed_training_env)
-
-    assert "-np 8" in mpi_command
-
-
-def test_get_mpi_command_with_process_slots_per_host(master_node_distributed_training_env):
-    master_node_distributed_training_env.hyperparameters['process_slots_per_host'] = 16
-
-    mpi_command = training._get_mpi_command(master_node_distributed_training_env)
-
-    assert "algo-1:16,algo-2:16" in mpi_command
-
-
-def test_get_mpi_command_with_additional_mpi_options(master_node_distributed_training_env):
-    another_mpi_option = "-x MY_ENVIRONMENT_VARIABLE"
-    master_node_distributed_training_env.hyperparameters[
-        'additional_mpi_options'] = another_mpi_option
-
-    mpi_command = training._get_mpi_command(master_node_distributed_training_env)
-
-    assert another_mpi_option in mpi_command
+    download_and_install.assert_called_with('s3://my/script')
+    _change_hostname.assert_called_once_with('algo-1')
+    _start_ssh_daemon.assert_called_once()
+    _wait_for_worker_nodes_to_start_sshd.assert_called_once_with(hosts)
+    check_call.assert_called_once_with(
+        ['mpirun', '--allow-run-as-root', '--host', 'algo-1,algo-2', '-mca', 'btl_tcp_if_include',
+         'foonet', '-mca',
+         'oob_tcp_if_include', 'foonet',
+         '-mca', 'btl', '^openib', '-x', 'PATH', '-x', 'LD_LIBRARY_PATH', '-x',
+         'LD_PRELOAD=/libchangehostname.so', '-mca', 'orte_abort_on_non_zero_status', '1', '-x',
+         'NCCL_DEBUG=INFO', '-x', 'NCCL_SOCKET_IFNAME=foonet',
+         '-np', '2', '/mpi_script.sh'])
+    chmod.assert_called_with('/mpi_script.sh', stat().st_mode.__or__())
 
 
-def test_start_ssh_daemon():
-    with patch('subprocess.Popen') as mock_popen:
-        training._start_ssh_daemon()
+@patch('chainer_framework.training._change_hostname')
+@patch('chainer_framework.training._start_ssh_daemon')
+@patch('chainer_framework.training._wait_for_worker_nodes_to_start_sshd')
+@patch('subprocess.check_call')
+@patch('sagemaker_containers.beta.framework.modules.download_and_install')
+@patch('os.stat')
+@patch('os.chmod')
+@patch(builtins_open, mock_open())
+def test_distributed_training_from_master_node_use_mpi_with_gpus(
+        chmod, stat, download_and_install, check_call,
+        _wait_for_worker_nodes_to_start_sshd, _start_ssh_daemon, _change_hostname):
+    hosts = ['algo-1', 'algo-2']
+    env = mock_training_env(hosts=hosts, num_gpus=8, network_interface_name='foonet')
+    training.train(env, {'sagemaker_use_mpi': True})
 
-        mock_popen.assert_called_with(["/usr/sbin/sshd", "-D"])
+    download_and_install.assert_called_with('s3://my/script')
+    _change_hostname.assert_called_once_with('algo-1')
+    _start_ssh_daemon.assert_called_once()
+    _wait_for_worker_nodes_to_start_sshd.assert_called_once_with(hosts)
+    check_call.assert_called_once_with(
+        ['mpirun', '--allow-run-as-root', '--host', 'algo-1:8,algo-2:8', '-mca',
+         'btl_tcp_if_include',
+         'foonet', '-mca',
+         'oob_tcp_if_include', 'foonet',
+         '-mca', 'btl', '^openib', '-x', 'PATH', '-x', 'LD_LIBRARY_PATH', '-x',
+         'LD_PRELOAD=/libchangehostname.so', '-mca', 'orte_abort_on_non_zero_status', '1', '-x',
+         'NCCL_DEBUG=INFO', '-x', 'NCCL_SOCKET_IFNAME=foonet',
+         '-np', '16', '/mpi_script.sh'])
+    chmod.assert_called_with('/mpi_script.sh', stat().st_mode.__or__())
+
+
+@patch('chainer_framework.training._change_hostname')
+@patch('chainer_framework.training._start_ssh_daemon')
+@patch('chainer_framework.training._wait_for_worker_nodes_to_start_sshd')
+@patch('subprocess.check_call')
+@patch('sagemaker_containers.beta.framework.modules.download_and_install')
+@patch('os.stat')
+@patch('os.chmod')
+@patch(builtins_open, mock_open())
+def test_distributed_training_from_master_node_use_mpi_with_slot_processes_per_host(
+        chmod, stat, download_and_install, check_call,
+        _wait_for_worker_nodes_to_start_sshd, _start_ssh_daemon, _change_hostname):
+    hosts = ['algo-1', 'algo-2']
+    env = mock_training_env(hosts=hosts, num_gpus=8, network_interface_name='foonet')
+    training.train(env, {'sagemaker_use_mpi': True, 'sagemaker_process_slots_per_host': 16})
+
+    download_and_install.assert_called_with('s3://my/script')
+    _change_hostname.assert_called_once_with('algo-1')
+    _start_ssh_daemon.assert_called_once()
+    _wait_for_worker_nodes_to_start_sshd.assert_called_once_with(hosts)
+    check_call.assert_called_once_with(
+        ['mpirun', '--allow-run-as-root', '--host', 'algo-1:16,algo-2:16', '-mca',
+         'btl_tcp_if_include',
+         'foonet', '-mca',
+         'oob_tcp_if_include', 'foonet',
+         '-mca', 'btl', '^openib', '-x', 'PATH', '-x', 'LD_LIBRARY_PATH', '-x',
+         'LD_PRELOAD=/libchangehostname.so', '-mca', 'orte_abort_on_non_zero_status', '1', '-x',
+         'NCCL_DEBUG=INFO', '-x', 'NCCL_SOCKET_IFNAME=foonet',
+         '-np', '32', '/mpi_script.sh'])
+    chmod.assert_called_with('/mpi_script.sh', stat().st_mode.__or__())
+
+
+@patch('subprocess.Popen')
+@patch('sagemaker_containers.beta.framework.modules.download_and_install')
+@patch('os.stat')
+@patch('os.chmod')
+@patch(builtins_open, mock_open())
+@patch('os.path.isfile')
+def test_distributed_training_from_worker_node_use_mpi(
+        isfile, chmod, stat, download_and_install, popen):
+    hosts = ['algo-1', 'algo-2']
+    env = mock_training_env(current_host='algo-2', hosts=hosts)
+    training.train(env, {'sagemaker_use_mpi': True})
+
+    download_and_install.assert_called_with('s3://my/script')
+    popen.assert_called_with(['/usr/sbin/sshd', '-D'])
+
+    isfile.assert_called_with('/mpi_is_finished')
+    chmod.assert_called_once_with('/mpi_script.sh', stat().st_mode.__or__())
+
+
+@patch('os.system')
+@patch('chainer_framework.training._start_ssh_daemon')
+@patch('sagemaker_containers.beta.framework.modules.download_and_install')
+@patch('os.stat')
+@patch('os.chmod')
+@patch(builtins_open, mock_open())
+@patch('os.path.isfile')
+def test_distributed_training_from_worker_node(
+        isfile, chmod, stat, download_and_install,
+        _start_ssh_daemon, system):
+    hosts = ['algo-1', 'algo-2']
+    env = mock_training_env(current_host='algo-2', hosts=hosts)
+    training.train(env, {})
+
+    download_and_install.assert_called_with('s3://my/script')
+    system.assert_called_once_with('change-hostname.sh algo-2')
+    _start_ssh_daemon.assert_called_once()
+
+    isfile.assert_called_with('/mpi_is_finished')
+    chmod.assert_called_once_with('/mpi_script.sh', stat().st_mode.__or__())
+
+
+@patch('os.system')
+@patch('subprocess.Popen')
+@patch('chainer_framework.training._can_connect', return_value=True)
+@patch('time.sleep')
+@patch('subprocess.check_call')
+@patch('sagemaker_containers.beta.framework.modules.download_and_install')
+@patch('os.stat')
+@patch('os.chmod')
+@patch(builtins_open, mock_open())
+@patch('socket.socket')
+def test_distributed_training_from_worker_node_use_mpi_with_sagemaker_additional_mpi_options(
+        socket, chmod, stat, download_and_install, check_call, sleep, _can_connect, popen, system):
+    hosts = ['algo-1', 'algo-2']
+    env = mock_training_env(hosts=hosts, num_gpus=8, network_interface_name='foonet')
+    training.train(env, {'sagemaker_use_mpi': True, 'sagemaker_process_slots_per_host': 16,
+                         'sagemaker_additional_mpi_options': '-x MY_ENVIRONMENT_VARIABLE'})
+
+    download_and_install.assert_called_with('s3://my/script')
+    system.assert_called_once_with('change-hostname.sh algo-1')
+    popen.assert_called_once_with(["/usr/sbin/sshd", "-D"])
+    _can_connect.assert_called_with('algo-2', 22, socket())
+    check_call.assert_called_once_with(
+        ['mpirun', '--allow-run-as-root', '--host', 'algo-1:16,algo-2:16', '-mca',
+         'btl_tcp_if_include',
+         'foonet', '-mca',
+         'oob_tcp_if_include', 'foonet',
+         '-mca', 'btl', '^openib', '-x', 'PATH', '-x', 'LD_LIBRARY_PATH', '-x',
+         'LD_PRELOAD=/libchangehostname.so', '-mca', 'orte_abort_on_non_zero_status', '1', '-x',
+         'NCCL_DEBUG=INFO', '-x', 'NCCL_SOCKET_IFNAME=foonet',
+         '-np', '32', '-x', 'MY_ENVIRONMENT_VARIABLE', '/mpi_script.sh'])
+
+    chmod.assert_called_with('/mpi_script.sh', stat().st_mode.__or__())
+
+    open().write.assert_called_with("""#!/usr/bin/env bash
+# For distributed training: the 'master node' runs mpirun with this script, '/mpi_script.sh'
+# This script creates a file '/mpi_is_running' that worker nodes use to determine whether training 
+# (started by MPI from the master node) is still running. Processes on worker nodes use 
+# /mpi_is_finished file to determine when to exit.
+touch /mpi_is_running
+/Users/mvs/miniconda3/envs/35/bin/python -m mpi4py -m imagenet
+EXIT_CODE=$?
+touch /mpi_is_finished
+exit ${EXIT_CODE}
+""")
 
 
 def test_wait_for_training_to_finish(worker_node_distributed_training_env):
@@ -237,13 +328,11 @@ def test_wait_until_mpi_stops_running():
         assert mock_isfile.call_count == 3
 
 
-def test_wait_for_worker_nodes_to_start_sshd(master_node_distributed_training_env):
+def test_wait_for_worker_nodes_to_start_sshd():
     with patch('chainer_framework.training._can_connect') as mock_can_connect, patch('time.sleep'):
-        hosts = [host for host in master_node_distributed_training_env.hosts
-                 if host != master_node_distributed_training_env.current_host]
         mock_can_connect.side_effect = [False, False, True]
 
-        training._wait_for_worker_nodes_to_start_sshd(hosts)
+        training._wait_for_worker_nodes_to_start_sshd(['algo-2'])
 
         assert mock_can_connect.call_count == 3
 
@@ -259,10 +348,30 @@ def test_wait_for_worker_nodes_to_start_sshd_timeout(master_node_distributed_tra
                                                           timeout_in_seconds=0.0001)
 
 
-def test_get_master_host_name(master_node_distributed_training_env):
-    master_host_name = training._get_master_host_name(master_node_distributed_training_env.hosts)
+@patch('chainer_framework.training._can_connect', return_value=False)
+@patch('time.sleep')
+@patch('socket.socket')
+def test_wait_for_worker_nodes_to_start_sshd_timeout(socket, sleep, _can_connect):
+    hosts = ['algo-1', 'algo-2']
+    mock_training_env(hosts=hosts, num_gpus=8, network_interface_name='foonet')
 
-    assert master_host_name == "algo-1"
+    with pytest.raises(timeout.TimeoutError):
+        training._wait_for_worker_nodes_to_start_sshd(hosts, interval=0.001,
+                                                      timeout_in_seconds=0.0001)
+
+    socket.assert_called()
+    sleep.assert_called()
+
+
+@patch('chainer_framework.training._can_connect', side_effect=[False, False, True])
+@patch('time.sleep')
+@patch('socket.socket')
+def test_wait_for_worker_nodes_to_start_sshd_timeout(socket, sleep, _can_connect):
+    training._wait_for_worker_nodes_to_start_sshd(['algo-2'])
+
+    assert _can_connect.call_count == 3
+    socket.assert_called()
+    sleep.assert_called()
 
 
 def test_can_connect():

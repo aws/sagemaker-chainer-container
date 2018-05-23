@@ -29,7 +29,7 @@ setup(
     ],
     install_requires=['sagemaker-containers==2.0.0', 'chainer >= 4.0.0', 'retrying==1.3.3',
                       'numpy >= 1.14'],
-    dependency_links=['pip install git+https://github.com/mvsusp/sagemaker-containers@mvs-smode',
+    dependency_links=['pip install git+https://github.com/aws/sagemaker-containers@v2.0.0-rc05',
                       'pip install git+https://github.com/aws/sagemaker-python-sdk-staging'],
     extras_require={
         'test': [

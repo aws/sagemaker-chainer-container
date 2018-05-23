@@ -23,7 +23,7 @@ import chainer.links as L
 from chainer.training import extensions
 import numpy as np
 
-from sagemaker_containers import env
+import sagemaker_containers
 
 
 class MLP(chainer.Chain):
@@ -63,7 +63,7 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb
 
 
 if __name__ == '__main__':
-    training_env = env.TrainingEnv()
+    env = sagemaker_containers.training_env()
 
     parser = argparse.ArgumentParser()
 
@@ -72,18 +72,12 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--frequency', type=int, default=20)
     parser.add_argument('--batch-size', type=int, default=100)
-    parser.add_argument('--model-dir', type=str)
+    parser.add_argument('--model-dir', type=str, default=env.model_dir)
 
-    # we need to decide if we are passing the channels as arg parse parameters
-    # if not the code here would change to the following
+    parser.add_argument('--train', type=str, default=env.channel_input_dirs['train'])
+    parser.add_argument('--test', type=str, default=env.channel_input_dirs['test'])
 
-    # parser.add_argument('--train', type=str, default=training_env.channel_input_dirs['train'])
-    # parser.add_argument('--test', type=str, default=training_env.channel_input_dirs['test'])
-
-    parser.add_argument('--train', type=str)
-    parser.add_argument('--test', type=str)
-
-    parser.add_argument('--num-gpus', type=int, default=training_env.num_gpus)
+    parser.add_argument('--num-gpus', type=int, default=env.num_gpus)
 
     args = parser.parse_args()
 
@@ -137,7 +131,7 @@ if __name__ == '__main__':
 
     # Write output files to output_data_dir.
     # These are zipped and uploaded to S3 output path as output.tar.gz.
-    trainer = training.Trainer(updater, (args.epochs, 'epoch'), out=training_env.output_data_dir)
+    trainer = training.Trainer(updater, (args.epochs, 'epoch'), out=env.output_data_dir)
 
     # Evaluate the model with the test dataset for each epoch
 

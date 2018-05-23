@@ -15,20 +15,20 @@ from __future__ import print_function
 import argparse
 
 import chainermn
-from sagemaker_containers import env
+import sagemaker_containers
 
 if __name__ == '__main__':
-    training_env = env.TrainingEnv()
+    env = sagemaker_containers.training_env()
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--num-gpus', type=int, default=training_env.num_gpus)
+    parser.add_argument('--num-gpus', type=int, default=env.num_gpus)
     parser.add_argument('--communicator', type=str,
-                        default='naive' if training_env.num_gpus == 0 else 'pure_nccl')
-    parser.add_argument('--hosts', type=str, default=training_env.hosts)
+                        default='naive' if env.num_gpus == 0 else 'pure_nccl')
+    parser.add_argument('--hosts', type=str, default=env.hosts)
     parser.add_argument('--node_to_fail', type=int)
 
-    args, _ = parser.parse_known_args()
+    args = parser.parse_args()
 
     if len(args.hosts) == 1:
         raise Exception('Exception on a single machine')

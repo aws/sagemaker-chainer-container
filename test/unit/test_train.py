@@ -17,7 +17,7 @@ import tempfile
 
 from mock import MagicMock
 import pytest
-from sagemaker_containers import env
+from sagemaker_containers.beta.framework import params
 
 INPUT_DATA_CONFIG = {
     "train": {
@@ -30,9 +30,9 @@ INPUT_DATA_CONFIG = {
 }
 
 HYPERPARAMETERS = {
-    env.REGION_NAME_PARAM: 'us-west-2',
-    env.USER_PROGRAM_PARAM: 'myscript.py',
-    env.SUBMIT_DIR_PARAM: 's3://mybucket/code.tar.gz'
+    params.REGION_NAME_PARAM: 'us-west-2',
+    params.USER_PROGRAM_PARAM: 'myscript.py',
+    params.SUBMIT_DIR_PARAM: 's3://mybucket/code.tar.gz'
 }
 
 

@@ -15,7 +15,8 @@ import logging
 
 import chainer
 import numpy as np
-from sagemaker_containers import content_types, encoders, env, modules, transformer, worker
+from sagemaker_containers.beta.framework import (content_types, encoders, env, modules, transformer,
+                                                 worker)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)

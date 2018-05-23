@@ -24,7 +24,7 @@ import chainer.links as L
 from chainer.training import extensions
 import chainermn
 import numpy as np
-from sagemaker_containers import env
+import sagemaker_containers
 
 logger = logging.getLogger('user_script')
 logger.setLevel(logging.INFO)
@@ -65,13 +65,11 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb
 
 
 if __name__ == '__main__':
-    training_env = env.TrainingEnv()
+    env = sagemaker_containers.training_env()
 
     parser = argparse.ArgumentParser()
 
     # Data and model checkpoints directories
-    parser.add_argument('--process_slots_per_host', type=int)
-    parser.add_argument('--num_processes', type=int)
     parser.add_argument('--epochs', type=int)
     parser.add_argument('--batch_size', type=int)
     parser.add_argument('--communicator', type=str, default='pure_nccl')
@@ -79,18 +77,12 @@ if __name__ == '__main__':
     parser.add_argument('--units', type=int, default=1000)
 
     parser.add_argument('--model-dir', type=str)
-    parser.add_argument('--output_data_dir', type=str, default=training_env.output_data_dir)
-    parser.add_argument('--host', type=str, default=training_env.current_host)
-    parser.add_argument('--num-gpus', type=int, default=training_env.num_gpus)
+    parser.add_argument('--output_data_dir', type=str, default=env.output_data_dir)
+    parser.add_argument('--host', type=str, default=env.current_host)
+    parser.add_argument('--num-gpus', type=int, default=env.num_gpus)
 
-    # we need to decide if we are passing the channels as arg parse parameters
-    # if not the code here would change to the following
-
-    # parser.add_argument('--train', type=str, default=training_env.channel_input_dirs['train'])
-    # parser.add_argument('--test', type=str, default=training_env.channel_input_dirs['test'])
-
-    parser.add_argument('--train', type=str)
-    parser.add_argument('--test', type=str)
+    parser.add_argument('--train', type=str, default=env.channel_input_dirs['train'])
+    parser.add_argument('--test', type=str, default=env.channel_input_dirs['test'])
 
     args = parser.parse_args()
 
@@ -175,7 +167,7 @@ if __name__ == '__main__':
 
     # only save the model in the master node
     if args.host == 'algo-1':
-        serializers.save_npz(os.path.join(args.model_dir, 'model.npz'), model)
+        serializers.save_npz(os.path.join(env.model_dir, 'model.npz'), model)
 
 
 def model_fn(model_dir):

@@ -24,7 +24,7 @@ import boto3
 from botocore.exceptions import ClientError
 import requests
 from sagemaker import fw_utils
-from sagemaker_containers import content_types, encoders
+from sagemaker_containers.beta.framework import content_types, encoders
 import yaml
 
 CYAN_COLOR = '\033[36m'
@@ -293,7 +293,7 @@ def create_training(data_dir, customer_script, optml, image, additional_volumes,
                       customer_script, source_dir, entrypoint)
 
     print("training dir: \n{}".format(
-        str(subprocess.check_output(['ls', '-lR', tmpdir]).decode('utf-8'))))
+        str(subprocess.check_output(['ls', '-l', tmpdir]).decode('utf-8'))))
 
     return tmpdir
 

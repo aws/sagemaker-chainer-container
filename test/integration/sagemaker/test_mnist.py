@@ -39,7 +39,7 @@ def _test_mnist(sagemaker_session, ecr_image, instance_type, script_path, instan
                                        train_instance_type=instance_type,
                                        sagemaker_session=sagemaker_session,
                                        docker_image_uri=ecr_image,
-                                       hyperparameters={'epochs': 1, 'model-dir': '/opt/ml/model'})
+                                       hyperparameters={'epochs': 1})
 
         prefix = 'chainer_mnist/{}'.format(sagemaker_timestamp())
 
