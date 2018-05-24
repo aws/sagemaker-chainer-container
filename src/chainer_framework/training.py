@@ -81,9 +81,8 @@ def train(env, hyperparameters):
 def _run_training(env):
     logger.info('Invoking user training script.')
 
-    args = framework.mapping.to_cmd_args(env.hyperparameters)
-
-    framework.modules.run_module_from_s3(env.module_dir, args, env.module_name)
+    framework.modules.run_module_from_s3(env.module_dir, env.to_cmd_args(),
+                                         env.to_env_vars(), env.module_name)
 
 
 def _change_hostname(current_host):
@@ -179,6 +178,9 @@ def _get_mpi_command(env, hyperparameters):
     for v in credential_vars:
         if v in os.environ:
             mpi_command += " -x {}".format(v)
+
+    for name, value in env.to_env_vars().items():
+        mpi_command += ' -x {}="{}"'.format(name, value)
 
     mpi_command += " {} ".format(additional_mpi_options) + " {}".format(_MPI_SCRIPT)
 
