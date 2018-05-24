@@ -13,6 +13,7 @@
 import os
 
 import numpy as np
+import pytest
 
 from test.utils import local_mode, test_utils
 
@@ -85,9 +86,11 @@ def test_chainer_mnist_custom_loop(docker_image, opt_ml, use_gpu):
         test_utils.predict_and_assert_response_length(request_data, 'application/x-npy')
 
 
-def test_chainer_mnist_distributed(docker_image, opt_ml, use_gpu):
+@pytest.mark.parametrize('customer_script',
+                         ['distributed_customer_script.py',
+                          'distributed_customer_script_with_env_vars.py'])
+def test_chainer_mnist_distributed(docker_image, opt_ml, use_gpu, customer_script):
 
-    customer_script = 'distributed_customer_script.py'
     cluster_size = 2
     # pure_nccl communicator hangs when only one gpu is available.
     hyperparameters = {'sagemaker_process_slots_per_host': 1,
