@@ -26,28 +26,27 @@ from chainer import initializers
 from chainer import serializers
 from chainer import training
 from chainer.training import extensions
-import sagemaker_containers
 
 import net
 
 
 if __name__=='__main__':
-    training_env = sagemaker_containers.training_env()
-    num_gpus = training_env.num_gpus
+    
+    num_gpus = int(os.environ['SM_NUM_GPUS'])
     
     parser = argparse.ArgumentParser()
 
-    # retrieve the hyperparameters we set in notebook (with some defaults)
+    # retrieve the hyperparameters we set from the client (with some defaults)
     parser.add_argument('--epochs', type=int, default=30)
     parser.add_argument('--batch-size', type=int, default=256)
     parser.add_argument('--learning-rate', type=float, default=0.05)
     parser.add_argument('--communicator', type=str, default='pure_nccl' if num_gpus > 0 else 'naive')
 
     # Data, model, and output directories. These are required.
-    parser.add_argument('--output-data-dir', type=str, default=training_env.output_data_dir)
-    parser.add_argument('--model-dir', type=str, default=training_env.model_dir)
-    parser.add_argument('--train', type=str, default=training_env.channel_input_dirs['train'])
-    parser.add_argument('--test', type=str, default=training_env.channel_input_dirs['test'])
+    parser.add_argument('--output-data-dir', type=str, default=os.environ['SM_OUTPUT_DATA_DIR'])
+    parser.add_argument('--model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
+    parser.add_argument('--train', type=str, default=os.environ['SM_CHANNEL_TRAIN'])
+    parser.add_argument('--test', type=str, default=os.environ['SM_CHANNEL_TEST'])
     
     args, _ = parser.parse_known_args()
     

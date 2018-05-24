@@ -23,7 +23,6 @@ import chainer.links as L
 from chainer import training, serializers
 from chainer.training import extensions
 from chainer.datasets import tuple_dataset
-import sagemaker_containers
 
 # Define the network to train MNIST
 class MLP(chainer.Chain):
@@ -42,21 +41,22 @@ class MLP(chainer.Chain):
 
     
 if __name__=='__main__':
-    training_env = sagemaker_containers.training_env()
 
     parser = argparse.ArgumentParser()
-
-    # retrieve the hyperparameters we set in notebook (with some defaults)
+    
+    # retrieve the hyperparameters we set from the client (with some defaults)
     parser.add_argument('--epochs', type=int, default=50)
     parser.add_argument('--batch-size', type=int, default=64)
 
     # Data, model, and output directories. These are required.
-    parser.add_argument('--output-data-dir', type=str, default=training_env.output_data_dir)
-    parser.add_argument('--model-dir', type=str, default=training_env.model_dir)
-    parser.add_argument('--train', type=str, default=training_env.channel_input_dirs['train'])
-    parser.add_argument('--test', type=str, default=training_env.channel_input_dirs['test'])
+    parser.add_argument('--output-data-dir', type=str, default=os.environ['SM_OUTPUT_DATA_DIR'])
+    parser.add_argument('--model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
+    parser.add_argument('--train', type=str, default=os.environ['SM_CHANNEL_TRAIN'])
+    parser.add_argument('--test', type=str, default=os.environ['SM_CHANNEL_TEST'])
     
     args, _ = parser.parse_known_args()
+    
+    num_gpus = int(os.environ['SM_NUM_GPUS'])
     
     train_data = np.load(os.path.join(args.train, 'train.npz'))['images']
     train_labels = np.load(os.path.join(args.train, 'train.npz'))['labels']
@@ -69,7 +69,7 @@ if __name__=='__main__':
 
     # Create the network
     model = L.Classifier(MLP(1000, 10))
-    num_gpus = training_env.num_gpus
+    
     # Configure gpu if necessary
     if num_gpus > 0:
         chainer.cuda.get_device_from_id(0).use()

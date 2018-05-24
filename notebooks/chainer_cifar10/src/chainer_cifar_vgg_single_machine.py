@@ -24,27 +24,27 @@ import chainer.links as L
 from chainer import training
 from chainer import serializers
 from chainer.training import extensions
-import sagemaker_containers
 
 import net
 
 if __name__ =='__main__':
-    training_env = sagemaker_containers.training_env()
 
     parser = argparse.ArgumentParser()
 
-    # retrieve the hyperparameters we set in notebook (with some defaults)
+    # retrieve the hyperparameters we set from the client (with some defaults)
     parser.add_argument('--epochs', type=int, default=50)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--learning-rate', type=float, default=0.05)
 
-    # Data, model, and output directories. These are required.
-    parser.add_argument('--output-data-dir', type=str, default=training_env.output_data_dir)
-    parser.add_argument('--model-dir', type=str, default=training_env.model_dir)
-    parser.add_argument('--train', type=str, default=training_env.channel_input_dirs['train'])
-    parser.add_argument('--test', type=str, default=training_env.channel_input_dirs['test'])
+    # Data, model, and output directories These are required.
+    parser.add_argument('--output-data-dir', type=str, default=os.environ['SM_OUTPUT_DATA_DIR'])
+    parser.add_argument('--model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
+    parser.add_argument('--train', type=str, default=os.environ['SM_CHANNEL_TRAIN'])
+    parser.add_argument('--test', type=str, default=os.environ['SM_CHANNEL_TEST'])
     
     args, _ = parser.parse_known_args()
+    
+    num_gpus = int(os.environ['SM_NUM_GPUS'])
     
     train_data = np.load(os.path.join(args.train, 'train.npz'))['data']
     train_labels = np.load(os.path.join(args.train, 'train.npz'))['labels']
@@ -69,7 +69,6 @@ if __name__ =='__main__':
     optimizer.add_hook(chainer.optimizer.WeightDecay(5e-4))
 
     # Set up a trainer
-    num_gpus = training_env.num_gpus
     device = 0 if num_gpus > 0 else -1  # -1 indicates CPU, 0 indicates first GPU device.
     if num_gpus > 1:
         devices = range(num_gpus)

@@ -21,16 +21,13 @@ import chainer
 from chainer import training
 from chainer import serializers
 from chainer.training import extensions
-from sagemaker_containers import env
 
 import nets
 from nlp_utils import convert_seq, split_text, normalize_text, transform_to_array
 
 
 if __name__=='__main__':
-    training_env = env.TrainingEnv()
-    num_gpus = training_env.num_gpus
-    
+        
     parser = argparse.ArgumentParser()
     
     parser.add_argument('--epochs', type=int, default=30)
@@ -40,14 +37,16 @@ if __name__=='__main__':
     parser.add_argument('--num-units', type=int, default=300)
     parser.add_argument('--model-type', type=str, default='rnn')
 
-    # Data and model checkpoints directories
-    parser.add_argument('--output-data-dir', type=str, default=training_env.output_data_dir)
-    parser.add_argument('--model-dir', type=str, default=training_env.model_dir)
-    parser.add_argument('--train', type=str, default=training_env.channel_input_dirs['train'])
-    parser.add_argument('--test', type=str, default=training_env.channel_input_dirs['test'])
-    parser.add_argument('--vocab', type=str, default=training_env.channel_input_dirs['vocab'])
+    # Data, model, and output directories. These are required.
+    parser.add_argument('--output-data-dir', type=str, default=os.environ['SM_OUTPUT_DATA_DIR'])
+    parser.add_argument('--model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
+    parser.add_argument('--train', type=str, default=os.environ['SM_CHANNEL_TRAIN'])
+    parser.add_argument('--test', type=str, default=os.environ['SM_CHANNEL_TEST'])
+    parser.add_argument('--vocab', type=str, default=os.environ['SM_CHANNEL_VOCAB'])
     
     args, _ = parser.parse_known_args()
+    
+    num_gpus = int(os.environ['SM_NUM_GPUS'])
     
     train_data = np.load(os.path.join(args.train, 'train.npz'))['data']
     train_labels = np.load(os.path.join(args.train, 'train.npz'))['labels']
@@ -149,29 +148,11 @@ if __name__=='__main__':
     # remove the best model from output artifacts (since it will be saved as a model artifact)
     os.remove(os.path.join(args.output_data_dir, 'best_model.npz'))
     
-    #model_with_vocab_and_setup = (model, vocab, model_setup)
-    
-    #save(model_with_vocab_and_setup, args.model_dir)
-    
-    #trained_model, vocab, model_setup = model
-    
     serializers.save_npz(os.path.join(args.model_dir, 'my_model.npz'), model)
     with open(os.path.join(args.model_dir, 'vocab.json'), 'w') as f:
         json.dump(vocab, f)
     with open(os.path.join(args.model_dir, 'args.json'), 'w') as f:
-        json.dump(model_setup, f)
-
-
-def save(model, model_dir):
-    
-    trained_model, vocab, model_setup = model
-    
-    serializers.save_npz(os.path.join(model_dir, 'my_model.npz'), trained_model)
-    with open(os.path.join(model_dir, 'vocab.json'), 'w') as f:
-        json.dump(vocab, f)
-    with open(os.path.join(model_dir, 'args.json'), 'w') as f:
-        json.dump(model_setup, f)
-    
+        json.dump(model_setup, f)    
 
 
 # ------------------------------------------------------------ #
