@@ -15,7 +15,7 @@ setup(
     version='1.0',
     description='Open source library template for creating containers to run on Amazon SageMaker.',
     packages=find_packages(where='src', exclude='test'),
-    package_dir={'': 'src'},
+    package_dir={'sagemaker_chainer_container': 'src/sagemaker_chainer_container'},
     py_modules=[os.splitext(os.basename(path))[0] for path in glob('src/*.py')],
     long_description=read('README.rst'),
     author='Amazon Web Services',
