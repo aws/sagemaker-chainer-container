@@ -21,7 +21,7 @@ from mock import call, MagicMock, patch, mock_open, ANY
 import pytest
 from six import PY2
 
-from chainer_framework import timeout, training
+from sagemaker_chainer_container import timeout, training
 
 
 # pylint: disable=protected-access
@@ -92,11 +92,11 @@ def test_single_machine(run_module_from_s3):
                                           env.to_env_vars(), 'imagenet')
 
 
-@patch('chainer_framework.training._change_hostname')
-@patch('chainer_framework.training._start_ssh_daemon')
-@patch('chainer_framework.training._wait_for_worker_nodes_to_start_sshd')
-@patch('chainer_framework.training._run_mpi_on_all_nodes')
-@patch('chainer_framework.training._create_mpi_script')
+@patch('sagemaker_chainer_container.training._change_hostname')
+@patch('sagemaker_chainer_container.training._start_ssh_daemon')
+@patch('sagemaker_chainer_container.training._wait_for_worker_nodes_to_start_sshd')
+@patch('sagemaker_chainer_container.training._run_mpi_on_all_nodes')
+@patch('sagemaker_chainer_container.training._create_mpi_script')
 def test_distributed_training_from_master_node(
         _create_mpi_script,
         _run_mpi_on_all_nodes,
@@ -117,9 +117,9 @@ def test_distributed_training_from_master_node(
 builtins_open = '__builtin__.open' if PY2 else 'builtins.open'
 
 
-@patch('chainer_framework.training._change_hostname')
-@patch('chainer_framework.training._start_ssh_daemon')
-@patch('chainer_framework.training._wait_for_worker_nodes_to_start_sshd')
+@patch('sagemaker_chainer_container.training._change_hostname')
+@patch('sagemaker_chainer_container.training._start_ssh_daemon')
+@patch('sagemaker_chainer_container.training._wait_for_worker_nodes_to_start_sshd')
 @patch('subprocess.check_call')
 @patch('sagemaker_containers.beta.framework.modules.download_and_install')
 @patch('os.stat')
@@ -151,9 +151,9 @@ def test_distributed_training_from_master_node_use_mpi(
     chmod.assert_called_with('/mpi_script.sh', stat().st_mode.__or__())
 
 
-@patch('chainer_framework.training._change_hostname')
-@patch('chainer_framework.training._start_ssh_daemon')
-@patch('chainer_framework.training._wait_for_worker_nodes_to_start_sshd')
+@patch('sagemaker_chainer_container.training._change_hostname')
+@patch('sagemaker_chainer_container.training._start_ssh_daemon')
+@patch('sagemaker_chainer_container.training._wait_for_worker_nodes_to_start_sshd')
 @patch('subprocess.check_call')
 @patch('sagemaker_containers.beta.framework.modules.download_and_install')
 @patch('os.stat')
@@ -187,9 +187,9 @@ def test_distributed_training_from_master_node_use_mpi_with_gpus(
     chmod.assert_called_with('/mpi_script.sh', stat().st_mode.__or__())
 
 
-@patch('chainer_framework.training._change_hostname')
-@patch('chainer_framework.training._start_ssh_daemon')
-@patch('chainer_framework.training._wait_for_worker_nodes_to_start_sshd')
+@patch('sagemaker_chainer_container.training._change_hostname')
+@patch('sagemaker_chainer_container.training._start_ssh_daemon')
+@patch('sagemaker_chainer_container.training._wait_for_worker_nodes_to_start_sshd')
 @patch('subprocess.check_call')
 @patch('sagemaker_containers.beta.framework.modules.download_and_install')
 @patch('os.stat')
@@ -240,7 +240,7 @@ def test_distributed_training_from_worker_node_use_mpi(
 
 
 @patch('os.system')
-@patch('chainer_framework.training._start_ssh_daemon')
+@patch('sagemaker_chainer_container.training._start_ssh_daemon')
 @patch('sagemaker_containers.beta.framework.modules.download_and_install')
 @patch('os.stat')
 @patch('os.chmod')
@@ -263,7 +263,7 @@ def test_distributed_training_from_worker_node(
 
 @patch('os.system')
 @patch('subprocess.Popen')
-@patch('chainer_framework.training._can_connect', return_value=True)
+@patch('sagemaker_chainer_container.training._can_connect', return_value=True)
 @patch('time.sleep')
 @patch('subprocess.check_call')
 @patch('sagemaker_containers.beta.framework.modules.download_and_install')
@@ -306,8 +306,8 @@ exit ${EXIT_CODE}
 
 
 def test_wait_for_training_to_finish(worker_node_distributed_training_env):
-    wait_for_mpi_import = 'chainer_framework.training._wait_for_mpi_to_start_running'
-    wait_until_mpi_stops_import = 'chainer_framework.training._wait_until_mpi_stops_running'
+    wait_for_mpi_import = 'sagemaker_chainer_container.training._wait_for_mpi_to_start_running'
+    wait_until_mpi_stops_import = 'sagemaker_chainer_container.training._wait_until_mpi_stops_running'
     with patch(wait_for_mpi_import) as mock_wait_for_mpi_to_start_running, \
             patch(wait_until_mpi_stops_import) as mock_wait_until_mpi_stops_running:
         training._wait_for_training_to_finish(worker_node_distributed_training_env)
@@ -341,7 +341,7 @@ def test_wait_until_mpi_stops_running():
 
 
 def test_wait_for_worker_nodes_to_start_sshd():
-    with patch('chainer_framework.training._can_connect') as mock_can_connect, patch('time.sleep'):
+    with patch('sagemaker_chainer_container.training._can_connect') as mock_can_connect, patch('time.sleep'):
         mock_can_connect.side_effect = [False, False, True]
 
         training._wait_for_worker_nodes_to_start_sshd(['algo-2'])
@@ -350,7 +350,7 @@ def test_wait_for_worker_nodes_to_start_sshd():
 
 
 def test_wait_for_worker_nodes_to_start_sshd_timeout(master_node_distributed_training_env):
-    with patch('chainer_framework.training._can_connect') as mock_can_connect:
+    with patch('sagemaker_chainer_container.training._can_connect') as mock_can_connect:
         hosts = [host for host in master_node_distributed_training_env.hosts
                  if host != master_node_distributed_training_env.current_host]
         mock_can_connect.return_value = False
@@ -360,7 +360,7 @@ def test_wait_for_worker_nodes_to_start_sshd_timeout(master_node_distributed_tra
                                                           timeout_in_seconds=0.0001)
 
 
-@patch('chainer_framework.training._can_connect', return_value=False)
+@patch('sagemaker_chainer_container.training._can_connect', return_value=False)
 @patch('time.sleep')
 @patch('socket.socket')
 def test_wait_for_worker_nodes_to_start_sshd_timeout(socket, sleep, _can_connect):
@@ -375,7 +375,7 @@ def test_wait_for_worker_nodes_to_start_sshd_timeout(socket, sleep, _can_connect
     sleep.assert_called()
 
 
-@patch('chainer_framework.training._can_connect', side_effect=[False, False, True])
+@patch('sagemaker_chainer_container.training._can_connect', side_effect=[False, False, True])
 @patch('time.sleep')
 @patch('socket.socket')
 def test_wait_for_worker_nodes_to_start_sshd_timeout(socket, sleep, _can_connect):

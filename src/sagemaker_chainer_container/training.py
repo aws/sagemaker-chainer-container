@@ -22,7 +22,7 @@ import time
 
 from retrying import retry
 import sagemaker_containers.beta.framework as framework
-from chainer_framework.timeout import timeout
+from sagemaker_chainer_container.timeout import timeout
 
 logging.basicConfig(format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                     level=logging.INFO)
@@ -34,7 +34,6 @@ logging.getLogger('botocore').setLevel(logging.WARN)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-_PORT = 7777
 _MPI_SCRIPT = "/mpi_script.sh"
 _MPI_IS_RUNNING = "/mpi_is_running"
 _MPI_IS_FINISHED = "/mpi_is_finished"
