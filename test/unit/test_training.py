@@ -351,7 +351,7 @@ def test_wait_for_worker_nodes_to_start_sshd_timeout(sleep, socket, _can_connect
 
     with pytest.raises(timeout.TimeoutError):
         training._wait_for_worker_nodes_to_start_sshd(hosts, interval=1,
-                                                      timeout_in_seconds=0.1)
+                                                      timeout_in_seconds=1)
 
 
 @patch('sagemaker_chainer_container.training._can_connect', side_effect=[False, False, True])
