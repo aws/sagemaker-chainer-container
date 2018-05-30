@@ -10,6 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 import os
 import socket
 import sys
@@ -340,45 +342,22 @@ def test_wait_until_mpi_stops_running():
         assert mock_isfile.call_count == 3
 
 
-def test_wait_for_worker_nodes_to_start_sshd():
-    with patch('sagemaker_chainer_container.training._can_connect') as mock_can_connect, patch('time.sleep'):
-        mock_can_connect.side_effect = [False, False, True]
-
-        training._wait_for_worker_nodes_to_start_sshd(['algo-2'])
-
-        assert mock_can_connect.call_count == 3
-
-
-def test_wait_for_worker_nodes_to_start_sshd_timeout(master_node_distributed_training_env):
-    with patch('sagemaker_chainer_container.training._can_connect') as mock_can_connect:
-        hosts = [host for host in master_node_distributed_training_env.hosts
-                 if host != master_node_distributed_training_env.current_host]
-        mock_can_connect.return_value = False
-
-        with pytest.raises(timeout.TimeoutError):
-            training._wait_for_worker_nodes_to_start_sshd(hosts, interval=0.001,
-                                                          timeout_in_seconds=0.0001)
-
-
 @patch('sagemaker_chainer_container.training._can_connect', return_value=False)
 @patch('time.sleep')
 @patch('socket.socket')
-def test_wait_for_worker_nodes_to_start_sshd_timeout(socket, sleep, _can_connect):
+def test_wait_for_worker_nodes_to_start_sshd_timeout(sleep, socket, _can_connect):
     hosts = ['algo-1', 'algo-2']
     mock_training_env(hosts=hosts, num_gpus=8, network_interface_name='foonet')
 
     with pytest.raises(timeout.TimeoutError):
-        training._wait_for_worker_nodes_to_start_sshd(hosts, interval=0.001,
-                                                      timeout_in_seconds=0.0001)
-
-    socket.assert_called()
-    sleep.assert_called()
+        training._wait_for_worker_nodes_to_start_sshd(hosts, interval=1,
+                                                      timeout_in_seconds=0.1)
 
 
 @patch('sagemaker_chainer_container.training._can_connect', side_effect=[False, False, True])
 @patch('time.sleep')
 @patch('socket.socket')
-def test_wait_for_worker_nodes_to_start_sshd_timeout(socket, sleep, _can_connect):
+def test_wait_for_worker_nodes_to_start_sshd(socket, sleep, _can_connect):
     training._wait_for_worker_nodes_to_start_sshd(['algo-2'])
 
     assert _can_connect.call_count == 3

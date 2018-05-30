@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-from __future__ import print_function
+from __future__ import print_function, absolute_import
 
 import argparse
 import os
@@ -22,8 +22,6 @@ import chainer.functions as F
 import chainer.links as L
 from chainer.training import extensions
 import numpy as np
-
-import sagemaker_containers
 
 
 class MLP(chainer.Chain):
@@ -63,7 +61,6 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb
 
 
 if __name__ == '__main__':
-    env = sagemaker_containers.training_env()
 
     parser = argparse.ArgumentParser()
 
@@ -72,12 +69,11 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--frequency', type=int, default=20)
     parser.add_argument('--batch-size', type=int, default=100)
-    parser.add_argument('--model-dir', type=str, default=env.model_dir)
+    parser.add_argument('--model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
+    parser.add_argument('--train', type=str, default=os.environ['SM_CHANNEL_TRAIN'])
+    parser.add_argument('--test', type=str, default=os.environ['SM_CHANNEL_TEST'])
 
-    parser.add_argument('--train', type=str, default=env.channel_input_dirs['train'])
-    parser.add_argument('--test', type=str, default=env.channel_input_dirs['test'])
-
-    parser.add_argument('--num-gpus', type=int, default=env.num_gpus)
+    num_gpus = int(os.environ['SM_NUM_GPUS'])
 
     args = parser.parse_args()
 
@@ -118,7 +114,6 @@ if __name__ == '__main__':
         def device_name(device_intra_rank):
             return 'main' if device_intra_rank == 0 else str(device_intra_rank)
 
-
         devices = {device_name(device): device for device in range(args.num_gpus)}
         updater = training.updater.ParallelUpdater(
             train_iter,
@@ -131,7 +126,7 @@ if __name__ == '__main__':
 
     # Write output files to output_data_dir.
     # These are zipped and uploaded to S3 output path as output.tar.gz.
-    trainer = training.Trainer(updater, (args.epochs, 'epoch'), out=env.output_data_dir)
+    trainer = training.Trainer(updater, (args.epochs, 'epoch'), out=args.output_data_dir)
 
     # Evaluate the model with the test dataset for each epoch
 
