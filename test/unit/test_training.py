@@ -17,7 +17,7 @@ import tempfile
 
 import chainer
 import chainer.links as L
-from mock import call, MagicMock, patch, mock_open
+from mock import call, MagicMock, patch, mock_open, ANY
 import pytest
 from six import PY2
 
@@ -85,7 +85,6 @@ def mock_training_env(current_host='algo-1', hosts=None, hyperparameters=None,
 
 @patch('sagemaker_containers.beta.framework.modules.run_module_from_s3')
 def test_single_machine(run_module_from_s3):
-
     env = mock_training_env()
     training.train(env, {})
 
@@ -126,8 +125,9 @@ builtins_open = '__builtin__.open' if PY2 else 'builtins.open'
 @patch('os.stat')
 @patch('os.chmod')
 @patch(builtins_open, mock_open())
+@patch('sagemaker_containers._logging.log_script_invocation')
 def test_distributed_training_from_master_node_use_mpi(
-        chmod, stat, download_and_install, check_call,
+        log_script_invocation, chmod, stat, download_and_install, check_call,
         _wait_for_worker_nodes_to_start_sshd, _start_ssh_daemon, _change_hostname):
     hosts = ['algo-1', 'algo-2']
     env = mock_training_env(hosts=hosts, num_gpus=0, network_interface_name='foonet')
@@ -137,14 +137,17 @@ def test_distributed_training_from_master_node_use_mpi(
     _change_hostname.assert_called_once_with('algo-1')
     _start_ssh_daemon.assert_called_once()
     _wait_for_worker_nodes_to_start_sshd.assert_called_once_with(hosts)
+    mpi_call = ['mpirun', '--allow-run-as-root', '--host', 'algo-1,algo-2', '-mca',
+                'btl_tcp_if_include', 'foonet', '-mca', 'oob_tcp_if_include', 'foonet', '-mca',
+                'btl', '^openib', '-x', 'PATH',
+                '-x', 'LD_LIBRARY_PATH', '-x', 'LD_PRELOAD=/libchangehostname.so', '-mca',
+                'orte_abort_on_non_zero_status', '1', '-x', 'NCCL_DEBUG=INFO', '-x',
+                'NCCL_SOCKET_IFNAME=foonet', '-np', '2', '/mpi_script.sh']
+
+    log_script_invocation.assert_called_once_with(mpi_call, env.to_env_vars(), ANY)
+
     check_call.assert_called_once_with(
-        ['mpirun', '--allow-run-as-root', '--host', 'algo-1,algo-2', '-mca', 'btl_tcp_if_include',
-         'foonet', '-mca',
-         'oob_tcp_if_include', 'foonet',
-         '-mca', 'btl', '^openib', '-x', 'PATH', '-x', 'LD_LIBRARY_PATH', '-x',
-         'LD_PRELOAD=/libchangehostname.so', '-mca', 'orte_abort_on_non_zero_status', '1', '-x',
-         'NCCL_DEBUG=INFO', '-x', 'NCCL_SOCKET_IFNAME=foonet',
-         '-np', '2', '/mpi_script.sh'])
+        mpi_call)
     chmod.assert_called_with('/mpi_script.sh', stat().st_mode.__or__())
 
 
@@ -156,8 +159,9 @@ def test_distributed_training_from_master_node_use_mpi(
 @patch('os.stat')
 @patch('os.chmod')
 @patch(builtins_open, mock_open())
+@patch('sagemaker_containers._logging.log_script_invocation')
 def test_distributed_training_from_master_node_use_mpi_with_gpus(
-        chmod, stat, download_and_install, check_call,
+        log_script_invocation, chmod, stat, download_and_install, check_call,
         _wait_for_worker_nodes_to_start_sshd, _start_ssh_daemon, _change_hostname):
     hosts = ['algo-1', 'algo-2']
     env = mock_training_env(hosts=hosts, num_gpus=8, network_interface_name='foonet')
@@ -167,15 +171,19 @@ def test_distributed_training_from_master_node_use_mpi_with_gpus(
     _change_hostname.assert_called_once_with('algo-1')
     _start_ssh_daemon.assert_called_once()
     _wait_for_worker_nodes_to_start_sshd.assert_called_once_with(hosts)
+
+    mpi_call = ['mpirun', '--allow-run-as-root', '--host', 'algo-1:8,algo-2:8', '-mca',
+                'btl_tcp_if_include', 'foonet', '-mca', 'oob_tcp_if_include', 'foonet', '-mca',
+                'btl',
+                '^openib', '-x', 'PATH', '-x', 'LD_LIBRARY_PATH', '-x',
+                'LD_PRELOAD=/libchangehostname.so', '-mca', 'orte_abort_on_non_zero_status', '1',
+                '-x',
+                'NCCL_DEBUG=INFO', '-x', 'NCCL_SOCKET_IFNAME=foonet', '-np', '16', '/mpi_script.sh']
+
+    log_script_invocation.assert_called_once_with(mpi_call, env.to_env_vars(), ANY)
+
     check_call.assert_called_once_with(
-        ['mpirun', '--allow-run-as-root', '--host', 'algo-1:8,algo-2:8', '-mca',
-         'btl_tcp_if_include',
-         'foonet', '-mca',
-         'oob_tcp_if_include', 'foonet',
-         '-mca', 'btl', '^openib', '-x', 'PATH', '-x', 'LD_LIBRARY_PATH', '-x',
-         'LD_PRELOAD=/libchangehostname.so', '-mca', 'orte_abort_on_non_zero_status', '1', '-x',
-         'NCCL_DEBUG=INFO', '-x', 'NCCL_SOCKET_IFNAME=foonet',
-         '-np', '16', '/mpi_script.sh'])
+        mpi_call)
     chmod.assert_called_with('/mpi_script.sh', stat().st_mode.__or__())
 
 
@@ -187,8 +195,9 @@ def test_distributed_training_from_master_node_use_mpi_with_gpus(
 @patch('os.stat')
 @patch('os.chmod')
 @patch(builtins_open, mock_open())
+@patch('sagemaker_containers._logging.log_script_invocation')
 def test_distributed_training_from_master_node_use_mpi_with_slot_processes_per_host(
-        chmod, stat, download_and_install, check_call,
+        log_script_invocation, chmod, stat, download_and_install, check_call,
         _wait_for_worker_nodes_to_start_sshd, _start_ssh_daemon, _change_hostname):
     hosts = ['algo-1', 'algo-2']
     env = mock_training_env(hosts=hosts, num_gpus=8, network_interface_name='foonet')
@@ -216,8 +225,9 @@ def test_distributed_training_from_master_node_use_mpi_with_slot_processes_per_h
 @patch('os.chmod')
 @patch(builtins_open, mock_open())
 @patch('os.path.isfile')
+@patch('sagemaker_containers._logging.log_script_invocation')
 def test_distributed_training_from_worker_node_use_mpi(
-        isfile, chmod, stat, download_and_install, popen):
+        log_script_invocation, isfile, chmod, stat, download_and_install, popen):
     hosts = ['algo-1', 'algo-2']
     env = mock_training_env(current_host='algo-2', hosts=hosts)
     training.train(env, {'sagemaker_use_mpi': True})
@@ -261,8 +271,10 @@ def test_distributed_training_from_worker_node(
 @patch('os.chmod')
 @patch(builtins_open, mock_open())
 @patch('socket.socket')
+@patch('sagemaker_containers._logging.log_script_invocation')
 def test_distributed_training_from_worker_node_use_mpi_with_sagemaker_additional_mpi_options(
-        socket, chmod, stat, download_and_install, check_call, sleep, _can_connect, popen, system):
+        log_script_invocation, socket, chmod, stat, download_and_install, check_call, sleep,
+        _can_connect, popen, system):
     hosts = ['algo-1', 'algo-2']
     env = mock_training_env(hosts=hosts, num_gpus=8, network_interface_name='foonet')
     training.train(env, {'sagemaker_use_mpi': True, 'sagemaker_process_slots_per_host': 16,
