@@ -9,7 +9,7 @@ This repository also contains Dockerfiles which install this library, Chainer, a
 for building SageMaker Chainer images.
 
 For information on running Chainer jobs on SageMaker: `Python
-SDK <https://github.com/aws/sagemaker-python-sdk>`__.
+SDK <https://github.com/aws/sagemaker-python-sdk#chainer-sagemaker-estimators>`__.
 
 For notebook examples: `SageMaker Notebook
 Examples <https://github.com/awslabs/amazon-sagemaker-examples>`__.
