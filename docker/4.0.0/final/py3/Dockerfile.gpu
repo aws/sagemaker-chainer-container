@@ -23,5 +23,5 @@ RUN pip3 install sagemaker-containers==2.0.2 && \
 
 ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 
-ENV SAGEMAKER_TRAINING_MODULE chainer_framework.training:main
-ENV SAGEMAKER_SERVING_MODULE chainer_framework.serving:main
+ENV SAGEMAKER_TRAINING_MODULE sagemaker_chainer_container.training:main
+ENV SAGEMAKER_SERVING_MODULE sagemaker_chainer_container.serving:main
