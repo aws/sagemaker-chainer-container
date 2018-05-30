@@ -15,7 +15,7 @@ import numpy as np
 import pytest
 from sagemaker_containers.beta.framework import content_types, encoders
 
-from chainer_framework import serving
+from sagemaker_chainer_container import serving
 
 
 @pytest.fixture(scope='module', name='np_array')
