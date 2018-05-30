@@ -155,7 +155,7 @@ dependencies.
 
 Tests are defined in
 `test/ <https://github.com/aws/sagemaker-chainer-container/tree/master/test>`__
-and include unit, integration and functional tests.
+and include unit, local integration, and SageMaker integration tests.
 
 Unit Tests
 ~~~~~~~~~~
@@ -168,18 +168,18 @@ If you want to run unit tests, then use:
 
     pytest test/unit
 
-Integration Tests
-~~~~~~~~~~~~~~~~~
+Local Integration Tests
+~~~~~~~~~~~~~~~~~~~~~~~
 
-Running integration tests require `Docker <https://www.docker.com/>`__ and `AWS
+Running local integration tests require `Docker <https://www.docker.com/>`__ and `AWS
 credentials <https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/setup-credentials.html>`__,
-as the integration tests make calls to a couple AWS services. The integration and functional
-tests require configurations specified within their respective
+as the local integration tests make calls to a couple AWS services. The local integration tests and
+SageMaker integration tests require configurations specified within their respective
 `conftest.py <https://github.com/aws/sagemaker-chainer-container/blob/master/test/conftest.py>`__.
 
-Integration tests on GPU require `Nvidia-Docker <https://github.com/NVIDIA/nvidia-docker>`__.
+Local integration tests on GPU require `Nvidia-Docker <https://github.com/NVIDIA/nvidia-docker>`__.
 
-Before running integration tests:
+Before running local integration tests:
 
 #. Build your Docker image.
 #. Pass in the correct pytest arguments to run tests against your Docker image.
@@ -188,9 +188,9 @@ If you want to run local integration tests, then use:
 
 ::
 
-    # Required arguments for integration tests are found in test/integ/conftest.py
+    # Required arguments for integration tests are found in test/conftest.py
 
-    pytest test/integ --docker-base-name <your_docker_image> \
+    pytest test/integration/local --docker-base-name <your_docker_image> \
                       --tag <your_docker_image_tag> \
                       --py-version <2_or_3> \
                       --framework-version <Chainer_version> \
@@ -199,38 +199,38 @@ If you want to run local integration tests, then use:
 ::
 
     # Example
-    pytest test/integ --docker-base-name preprod-chainer \
+    pytest test/integration/local --docker-base-name preprod-chainer \
                       --tag 1.0 \
                       --py-version 2 \
                       --framework-version 4.0.0 \
                       --processor cpu
 
-Functional Tests
-~~~~~~~~~~~~~~~~
+SageMaker Integration Tests
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Functional tests require your Docker image to be within an `Amazon ECR repository <https://docs
+SageMaker integration tests require your Docker image to be within an `Amazon ECR repository <https://docs
 .aws.amazon.com/AmazonECS/latest/developerguide/ECS_Console_Repositories.html>`__.
 
 The Docker-base-name is your `ECR repository namespace <https://docs.aws.amazon
 .com/AmazonECR/latest/userguide/Repositories.html>`__.
 
 The instance-type is your specified `Amazon SageMaker Instance Type
-<https://aws.amazon.com/sagemaker/pricing/instance-types/>`__ that the functional test will run on.
+<https://aws.amazon.com/sagemaker/pricing/instance-types/>`__ that the SageMaker integration test will run on.
 
-Before running functional tests:
+Before running SageMaker integration tests:
 
 #. Build your Docker image.
 #. Push the image to your ECR repository.
 #. Pass in the correct pytest arguments to run tests on SageMaker against the image within your ECR repository.
 
-If you want to run a functional end to end test on `Amazon
+If you want to run a SageMaker integration end to end test on `Amazon
 SageMaker <https://aws.amazon.com/sagemaker/>`__, then use:
 
 ::
 
-    # Required arguments for integration tests are found in test/functional/conftest.py
+    # Required arguments for integration tests are found in test/conftest.py
 
-    pytest test/functional --aws-id <your_aws_id> \
+    pytest test/integration/sagemaker --aws-id <your_aws_id> \
                            --docker-base-name <your_docker_image> \
                            --instance-type <amazon_sagemaker_instance_type> \
                            --tag <your_docker_image_tag> \
@@ -238,7 +238,7 @@ SageMaker <https://aws.amazon.com/sagemaker/>`__, then use:
 ::
 
     # Example
-    pytest test/functional --aws-id 12345678910 \
+    pytest test/integration/sagemaker --aws-id 12345678910 \
                            --docker-base-name preprod-chainer \
                            --instance-type ml.m4.xlarge \
                            --tag 1.0
