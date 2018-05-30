@@ -115,7 +115,7 @@ if __name__ == '__main__':
         def device_name(device_intra_rank):
             return 'main' if device_intra_rank == 0 else str(device_intra_rank)
 
-        devices = {device_name(device): device for device in range(args.num_gpus)}
+        devices = {device_name(device): device for device in range(num_gpus)}
         updater = training.updater.ParallelUpdater(
             train_iter,
             optimizer,
