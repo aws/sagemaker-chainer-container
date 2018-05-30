@@ -24,6 +24,13 @@ from retrying import retry
 import sagemaker_containers.beta.framework as framework
 from chainer_framework.timeout import timeout
 
+logging.basicConfig(format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                    level=logging.INFO)
+
+logging.getLogger('boto3').setLevel(logging.INFO)
+logging.getLogger('s3transfer').setLevel(logging.INFO)
+logging.getLogger('botocore').setLevel(logging.WARN)
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -101,9 +108,14 @@ def _get_master_host_name(hosts):
 
 def _run_mpi_on_all_nodes(env, hyperparameters):
     mpi_command = _get_mpi_command(env, hyperparameters)
-    logger.info("mpi_command: %s", mpi_command)
+    cmd = shlex.split(mpi_command)
 
-    subprocess.check_call(shlex.split(mpi_command))
+    framework.logging.log_script_invocation(cmd, env.to_env_vars(), logger)
+
+    with open(_MPI_SCRIPT) as f:
+        logger.info('Running user script:\n\n%s', f.read())
+
+    subprocess.check_call(cmd)
 
 
 def _get_mpi_command(env, hyperparameters):
@@ -281,6 +293,7 @@ def main():
     hyperparameters = framework.env.read_hyperparameters()
     env = framework.training_env(hyperparameters=hyperparameters)
 
+    logger.setLevel(env.log_level)
     train(env, hyperparameters)
 
 

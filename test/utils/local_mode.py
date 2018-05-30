@@ -38,7 +38,7 @@ SAGEMAKER_REGION = 'us-west-2'
 
 DEFAULT_HYPERPARAMETERS = {
     'sagemaker_enable_cloudwatch_metrics': False,
-    'sagemaker_container_log_level': str(logging.INFO),
+    'sagemaker_container_log_level': logging.INFO,
     'sagemaker_region': SAGEMAKER_REGION,
     'sagemaker_job_name': 'test'
 }
