@@ -10,6 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 import logging
 import os
 import shlex
@@ -22,7 +24,7 @@ import time
 
 from retrying import retry
 import sagemaker_containers.beta.framework as framework
-from chainer_framework.timeout import timeout
+from sagemaker_chainer_container.timeout import timeout
 
 logging.basicConfig(format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                     level=logging.INFO)
@@ -34,7 +36,6 @@ logging.getLogger('botocore').setLevel(logging.WARN)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-_PORT = 7777
 _MPI_SCRIPT = "/mpi_script.sh"
 _MPI_IS_RUNNING = "/mpi_is_running"
 _MPI_IS_FINISHED = "/mpi_is_finished"

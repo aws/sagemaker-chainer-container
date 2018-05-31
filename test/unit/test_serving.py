@@ -10,12 +10,14 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 from chainer import Variable
 import numpy as np
 import pytest
 from sagemaker_containers.beta.framework import content_types, encoders
 
-from chainer_framework import serving
+from sagemaker_chainer_container import serving
 
 
 @pytest.fixture(scope='module', name='np_array')

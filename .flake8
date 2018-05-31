@@ -1,5 +1,5 @@
 [flake8]
-application_import_names = chainer_framework, test, estimator
+application_import_names = sagemaker_chainer_container, test, estimator
 import-order-style = google
 max-line-length = 120
 exclude =

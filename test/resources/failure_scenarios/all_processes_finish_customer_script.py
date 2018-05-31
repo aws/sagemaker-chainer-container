@@ -10,6 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 import argparse
 import os
 import time
@@ -23,7 +25,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--num-gpus', type=int, default=env.num_gpus)
-    parser.add_argument('--communicator',  type=str,
+    parser.add_argument('--communicator', type=str,
                         default='naive' if env.num_gpus == 0 else 'pure_nccl')
     parser.add_argument('--current_host', type=str, default=env.current_host)
     parser.add_argument('--hosts', type=str, default=env.hosts)
