@@ -343,15 +343,13 @@ def test_wait_until_mpi_stops_running():
 
 
 @patch('sagemaker_chainer_container.training._can_connect', return_value=False)
-@patch('time.sleep')
-@patch('socket.socket')
-def test_wait_for_worker_nodes_to_start_sshd_timeout(sleep, socket, _can_connect):
+def test_wait_for_worker_nodes_to_start_sshd_timeout(_can_connect):
     hosts = ['algo-1', 'algo-2']
     mock_training_env(hosts=hosts, num_gpus=8, network_interface_name='foonet')
 
     with pytest.raises(timeout.TimeoutError):
         training._wait_for_worker_nodes_to_start_sshd(hosts, interval=1,
-                                                      timeout_in_seconds=1)
+                                                      timeout_in_seconds=0.01)
 
 
 @patch('sagemaker_chainer_container.training._can_connect', side_effect=[False, False, True])
