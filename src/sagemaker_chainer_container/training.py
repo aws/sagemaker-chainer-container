@@ -300,5 +300,5 @@ def main():
 
 # This branch hit by mpi_script.sh (see docker base directory)
 if __name__ == '__main__':
-    # adding a comma to test PR
+    # adding a comma to test PR. modifying this comment.
     main()
