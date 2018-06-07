@@ -25,7 +25,7 @@ from time import sleep
 import boto3
 from botocore.exceptions import ClientError
 import requests
-from sagemaker import fw_utils
+from sagemaker import fw_utils, utils
 from sagemaker_containers.beta.framework import content_types, encoders
 import yaml
 
@@ -208,7 +208,7 @@ def chain_docker_cmds(cmd, cmd2):
 
 
 class Container(object):
-    def __init__(self, tmpdir, command, startup_delay=10):
+    def __init__(self, tmpdir, command, startup_delay=5):
         self.command = command
         self.compose_file = os.path.join(tmpdir, DOCKER_COMPOSE_FILENAME)
         self.startup_delay = startup_delay
@@ -271,9 +271,10 @@ def create_training(data_dir, customer_script, optml, image, additional_volumes,
     hyperparameters = read_hyperparameters(additional_hps)
 
     if customer_script:
+        timestamp = utils.sagemaker_timestamp()
         s3_script_path = fw_utils.tar_and_upload_dir(session=session,
                                                      bucket=default_bucket(session),
-                                                     s3_key_prefix='test',
+                                                     s3_key_prefix='test-{}'.format(timestamp),
                                                      script=customer_script,
                                                      directory=source_dir)[0]
         hyperparameters.update({
@@ -362,9 +363,10 @@ def create_docker_services(command, tmpdir, hosts, image, additional_volumes, ad
         environment.extend(DEFAULT_HOSTING_ENV)
 
         if customer_script:
+            timestamp = utils.sagemaker_timestamp()
             s3_script_path = fw_utils.tar_and_upload_dir(session=session,
                                                          bucket=default_bucket(session),
-                                                         s3_key_prefix='test',
+                                                         s3_key_prefix='test-{}'.format(timestamp),
                                                          script=customer_script,
                                                          directory=source_dir)[0]
 
@@ -507,19 +509,6 @@ def _print_cmd(cmd):
 
     print('executing docker command: {}{}{}'.format(CYAN_COLOR, ' '.join(cmd), END_COLOR))
     sys.stdout.flush()
-
-
-def upload_source_files(script, credentials, path=None, job_name='test_job'):
-
-    session = _boto_session(credentials)
-    bucket = default_bucket(session)
-    s3_source_archive = tar_and_upload_dir(
-        session,
-        bucket,
-        job_name,
-        script,
-        path)
-    return s3_source_archive
 
 
 def _boto_session(credentials):
