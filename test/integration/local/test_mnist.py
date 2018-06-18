@@ -42,7 +42,7 @@ def test_chainer_mnist_single_machine(docker_image, opt_ml, use_gpu):
     script_path = os.path.join(mnist_path, customer_script)
 
     with local_mode.serve(script_path, model_dir=None, image_name=docker_image,
-                          opt_ml=opt_ml, use_gpu=use_gpu):
+                          opt_ml=opt_ml, use_gpu=use_gpu, source_dir=mnist_path):
 
         test_arrays = [np.zeros((100, 784), dtype='float32'),
                        np.zeros((100, 1, 28, 28), dtype='float32'),
