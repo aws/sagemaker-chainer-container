@@ -22,16 +22,15 @@ from estimator import ChainerTestEstimator
 
 
 def test_chainer_mnist_single_machine(sagemaker_session, ecr_image, instance_type):
-    _test_mnist(sagemaker_session, ecr_image, instance_type, 1)
+    _test_mnist(sagemaker_session, ecr_image, instance_type, 1, 'single_machine_customer_script.py')
 
 
 def test_chainer_mnist_distributed(sagemaker_session, ecr_image, instance_type):
-    _test_mnist(sagemaker_session, ecr_image, instance_type, 2)
+    _test_mnist(sagemaker_session, ecr_image, instance_type, 2, 'distributed_customer_script.py')
 
 
-def _test_mnist(sagemaker_session, ecr_image, instance_type, instance_count):
+def _test_mnist(sagemaker_session, ecr_image, instance_type, instance_count, script):
     source_dir = 'test/resources/mnist'
-    script = 'single_machine_customer_script.py'
 
     with timeout(minutes=15):
         data_path = 'test/resources/mnist/data'
