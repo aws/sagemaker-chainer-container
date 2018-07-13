@@ -113,10 +113,10 @@ Dockerfile.
 
     # Create the SageMaker Chainer Container Python package.
     cd sagemaker-chainer-container
-    python setup.py sdist
+    python setup.py bdist_wheel
 
     #. Copy your Python package to "final" Dockerfile directory that you are building.
-    cp dist/sagemaker_chainer_container-<package_version>.tar.gz docker/<Chainer_version>/final
+    cp -R dist/sagemaker_chainer_container-<package_version>.tar.gz docker/<Chainer_version>/final/<py_version>
 
 If you want to build "final" Docker images, then use:
 
