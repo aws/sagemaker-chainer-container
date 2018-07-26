@@ -110,7 +110,7 @@ def main(environ, start_response):
 
     logger.setLevel(serving_env.log_level)
 
-    user_module = modules.import_module_from_s3(serving_env.module_dir, serving_env.module_name)
+    user_module = modules.import_module(serving_env.module_dir, serving_env.module_name)
 
     user_module_transformer = _user_module_transformer(user_module)
 

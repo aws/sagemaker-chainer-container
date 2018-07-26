@@ -89,8 +89,8 @@ def train(env, hyperparameters):
 def _run_training(env):
     logger.info('Invoking user training script.')
 
-    framework.modules.run_module_from_s3(env.module_dir, env.to_cmd_args(),
-                                         env.to_env_vars(), env.module_name)
+    framework.modules.run_module(env.module_dir, env.to_cmd_args(),
+                                 env.to_env_vars(), env.module_name)
 
 
 def _change_hostname(current_host):
