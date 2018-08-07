@@ -85,13 +85,13 @@ def mock_training_env(current_host='algo-1', hosts=None, hyperparameters=None,
                      module_dir=module_dir, module_name=module_name, **kwargs)
 
 
-@patch('sagemaker_containers.beta.framework.modules.run_module_from_s3')
-def test_single_machine(run_module_from_s3):
+@patch('sagemaker_containers.beta.framework.modules.run_module')
+def test_single_machine(run_module):
     env = mock_training_env()
     training.train(env, {})
 
-    run_module_from_s3.assert_called_with('s3://my/script', env.to_cmd_args(),
-                                          env.to_env_vars(), 'imagenet')
+    run_module.assert_called_with('s3://my/script', env.to_cmd_args(),
+                                  env.to_env_vars(), 'imagenet')
 
 
 @patch('sagemaker_chainer_container.training._change_hostname')
