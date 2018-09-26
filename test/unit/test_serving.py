@@ -15,7 +15,7 @@ from __future__ import absolute_import
 from chainer import Variable
 import numpy as np
 import pytest
-from sagemaker_containers.beta.framework import content_types, encoders
+from sagemaker_containers.beta.framework import content_types, encoders, errors
 
 from sagemaker_chainer_container import serving
 
@@ -82,7 +82,7 @@ def test_input_fn_csv(csv_data, expected):
 
 
 def test_input_fn_bad_content_type():
-    with pytest.raises(encoders.UnsupportedFormatError):
+    with pytest.raises(errors.UnsupportedFormatError):
         serving.default_input_fn('', 'application/not_supported')
 
 
@@ -113,5 +113,5 @@ def test_output_fn_npz(np_array):
 
 
 def test_input_fn_bad_accept():
-    with pytest.raises(encoders.UnsupportedFormatError):
+    with pytest.raises(errors.UnsupportedFormatError):
         serving.default_output_fn('', 'application/not_supported')
