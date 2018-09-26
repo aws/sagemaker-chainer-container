@@ -29,7 +29,7 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.5',
     ],
-    install_requires=['sagemaker-containers >= 2.1.0', 'chainer >= 4.0.0', 'retrying==1.3.3',
+    install_requires=['sagemaker-containers >= 2.2.0', 'chainer >= 4.0.0', 'retrying==1.3.3',
                       'numpy >= 1.14'],
 
     dependency_links=['pip install git+https://github.com/aws/sagemaker-python-sdk-staging'],
