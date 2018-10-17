@@ -65,7 +65,7 @@ Base Images
 The "base" Dockerfile encompass the installation of the framework and all of the dependencies
 needed.
 
-Tagging scheme is based on <Chainer_version>-<processor>-<python_version>. (e.g. 4.0.0-cpu-py2)
+Tagging scheme is based on <Chainer_version>-<processor>-<python_version>. (e.g. 4.1.0-cpu-py3)
 
 All "final" Dockerfiles build images using base images that use the tagging scheme
 above.
@@ -74,7 +74,8 @@ If you want to build your base docker image, then use:
 
 ::
 
-    # All build instructions assume you're building from the same directory as the dockerfile.
+    # You need to build the base image from the same directory as the dockerfile
+    cd sagemaker-chainer-container/docker/base
 
     # CPU
     docker build -t chainer-base:<Chainer_version>-cpu-<python_version> -f Dockerfile.cpu .
@@ -87,10 +88,10 @@ If you want to build your base docker image, then use:
     # Example
 
     # CPU
-    docker build -t chainer-base:4.0.0-cpu-py2 -f Dockerfile.cpu .
+    docker build -t chainer-base:4.1.0-cpu-py3 -f Dockerfile.cpu .
 
     # GPU
-    docker build -t chainer-base:4.0.0-gpu-py2 -f Dockerfile.gpu .
+    docker build -t chainer-base:4.1.0-gpu-py3 -f Dockerfile.gpu .
 
 Final Images
 ~~~~~~~~~~~~
@@ -98,7 +99,7 @@ Final Images
 The "final" Dockerfiles encompass the installation of the SageMaker specific support code.
 
 All "final" Dockerfiles use `base images for building <https://github
-.com/aws/sagemaker-chainer-container/blob/master/docker/0.12.1/final/py2/Dockerfile.cpu#L2>`__.
+.com/aws/sagemaker-chainer-container/blob/master/docker/4.1.0/final/py3/Dockerfile.cpu#L1>`__.
 
 These "base" images are specified with the naming convention of
 chainer-base:<Chainer_version>-<processor>-<python_version>.
@@ -115,30 +116,27 @@ Dockerfile.
     cd sagemaker-chainer-container
     python setup.py bdist_wheel
 
-    #. Copy your Python package to "final" Dockerfile directory that you are building.
-    cp -R dist/sagemaker_chainer_container-<package_version>.tar.gz docker/<Chainer_version>/final/<py_version>
-
 If you want to build "final" Docker images, then use:
 
 ::
 
-    # All build instructions assumes you're building from the same directory as the dockerfile.
+    # This build instruction assumes you're building from the repository root directory
 
     # CPU
-    docker build -t <image_name>:<tag> -f Dockerfile.cpu .
+    docker build -t <image_name>:<tag> -f docker/<Chainer_version>/final/<python_version>/Dockerfile.cpu .
 
     # GPU
-    docker build -t <image_name>:<tag> -f Dockerfile.gpu .
+    docker build -t <image_name>:<tag> -f docker/<Chainer_version>/final/<python_version>/Dockerfile.gpu .
 
 ::
 
     # Example
 
     # CPU
-    docker build -t preprod-chainer:4.0.0-cpu-py2 -f Dockerfile.cpu .
+    docker build -t preprod-chainer:4.1.0-cpu-py3 -f docker/4.1.0/final/py3/Dockerfile.cpu .
 
     # GPU
-    docker build -t preprod-chainer:4.0.0-gpu-py2 -f Dockerfile.gpu .
+    docker build -t preprod-chainer:4.1.0-gpu-py3 -f docker/4.1.0/final/py3/Dockerfile.gpu .
 
 
 Running the tests
@@ -201,8 +199,8 @@ If you want to run local integration tests, then use:
     # Example
     pytest test/integration/local --docker-base-name preprod-chainer \
                       --tag 1.0 \
-                      --py-version 2 \
-                      --framework-version 4.0.0 \
+                      --py-version 3 \
+                      --framework-version 4.1.0 \
                       --processor cpu
 
 SageMaker Integration Tests

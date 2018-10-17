@@ -105,17 +105,18 @@ def _user_module_transformer(user_module):
                                    output_fn=output_fn)
 
 
+app = None
+
+
 def main(environ, start_response):
-    serving_env = env.ServingEnv()
+    global app
+    if app is None:
+        serving_env = env.ServingEnv()
+        logger.setLevel(serving_env.log_level)
+        user_module = modules.import_module(serving_env.module_dir, serving_env.module_name)
+        user_module_transformer = _user_module_transformer(user_module)
+        user_module_transformer.initialize()
+        app = worker.Worker(transform_fn=user_module_transformer.transform,
+                            module_name=serving_env.module_name)
 
-    logger.setLevel(serving_env.log_level)
-
-    user_module = modules.import_module(serving_env.module_dir, serving_env.module_name)
-
-    user_module_transformer = _user_module_transformer(user_module)
-
-    user_module_transformer.initialize()
-
-    app = worker.Worker(transform_fn=user_module_transformer.transform,
-                        module_name=serving_env.module_name)
     return app(environ, start_response)
