@@ -36,7 +36,7 @@ def default_input_fn(input_data, content_type):
         the model server receives two pieces of information:
 
             - The request Content-Type, for example "application/json"
-            - The request data
+            - The request data, which is at most 5 MB (5 * 1024 * 1024 bytes) in size.
 
         The input_fn is responsible to take the request data and pre-process it before prediction.
 
