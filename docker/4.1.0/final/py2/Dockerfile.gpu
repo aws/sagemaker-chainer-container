@@ -1,5 +1,7 @@
 FROM chainer-base:4.1.0-gpu-py2
 
+LABEL com.amazonaws.sagemaker.capabilities.accept-bind-to-port=true
+
 RUN pip2 install --no-cache chainer==4.1.0 chainermn==1.3.0 chainercv==0.10.0 matplotlib==2.2.0 cupy==4.1.0 \
                             opencv-python==3.4.0.12
 
