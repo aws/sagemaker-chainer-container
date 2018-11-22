@@ -24,6 +24,7 @@ import time
 
 from retrying import retry
 import sagemaker_containers.beta.framework as framework
+
 from sagemaker_chainer_container.timeout import timeout
 
 logging.basicConfig(format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
@@ -176,26 +177,27 @@ def _get_mpi_command(env, hyperparameters):
 
     logger.info('network interface name: %s', env.network_interface_name)
 
-    mpi_command = 'mpirun --allow-run-as-root --host {}'.format(",".join(host_list)) \
-                  + " -mca btl_tcp_if_include {}".format(env.network_interface_name) \
-                  + " -mca oob_tcp_if_include {}".format(env.network_interface_name) \
-                  + " -mca btl ^openib" \
-                  + " -x PATH" \
-                  + " -x LD_LIBRARY_PATH" \
-                  + " -x LD_PRELOAD={}".format(_CHANGE_HOSTNAME_LIBRARY) \
-                  + " -mca orte_abort_on_non_zero_status 1" \
-                  + " -x NCCL_DEBUG=INFO" \
-                  + " -x NCCL_SOCKET_IFNAME={}".format(env.network_interface_name) \
-                  + " -np {} ".format(num_processes)
+    mpi_command = 'mpirun --allow-run-as-root --host {}'.format(','.join(host_list)) \
+                  + ' -mca btl_tcp_if_include {}'.format(env.network_interface_name) \
+                  + ' -mca oob_tcp_if_include {}'.format(env.network_interface_name) \
+                  + ' -mca btl ^openib' \
+                  + ' -x PATH' \
+                  + ' -x LD_LIBRARY_PATH' \
+                  + ' -x LD_PRELOAD={}'.format(_CHANGE_HOSTNAME_LIBRARY) \
+                  + ' -mca orte_abort_on_non_zero_status 1' \
+                  + ' -x NCCL_DEBUG=INFO' \
+                  + ' -x NCCL_SOCKET_IFNAME={}'.format(env.network_interface_name) \
+                  + ' -np {} '.format(num_processes)
 
     for v in credential_vars:
         if v in os.environ:
-            mpi_command += " -x {}".format(v)
+            mpi_command += ' -x {}'.format(v)
 
     for name, value in env.to_env_vars().items():
-        mpi_command += ' -x {}="{}"'.format(name, value)
+        if not name == 'SM_FRAMEWORK_PARAMS':
+            mpi_command += ' -x {}="{}"'.format(name, value)
 
-    mpi_command += " {} ".format(additional_mpi_options) + " {}".format(_MPI_SCRIPT)
+    mpi_command += ' {} '.format(additional_mpi_options) + ' {}'.format(_MPI_SCRIPT)
 
     return mpi_command
 
