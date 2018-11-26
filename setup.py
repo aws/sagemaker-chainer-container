@@ -30,8 +30,8 @@ setup(
         'Programming Language :: Python :: 3.5',
     ],
     # Temporarily freeze sagemaker-containers version to 2.2.5 until we have a proper fix
-    install_requires=['sagemaker-containers == 2.2.5', 'chainer >= 4.0.0', 'retrying==1.3.3',
-                      'numpy >= 1.14'],
+    install_requires=['sagemaker-containers>=2.2.5', 'chainer==5.0.0', 'retrying==1.3.3',
+                      'numpy>=1.14'],
 
     dependency_links=['pip install git+https://github.com/aws/sagemaker-python-sdk-staging'],
     extras_require={
