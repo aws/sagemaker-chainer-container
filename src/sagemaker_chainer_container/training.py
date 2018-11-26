@@ -194,6 +194,8 @@ def _get_mpi_command(env, hyperparameters):
             mpi_command += ' -x {}'.format(v)
 
     for name, value in env.to_env_vars().items():
+        # TODO: figure out why passing additional framework parameters
+        # (new with SageMaker Containers v2.2.6) causes MPI to hang
         if not name == 'SM_FRAMEWORK_PARAMS':
             mpi_command += ' -x {}="{}"'.format(name, value)
 
