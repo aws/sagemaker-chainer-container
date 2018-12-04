@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import json
 import logging
 import os
 import shlex
@@ -196,6 +197,11 @@ def _get_mpi_command(env, hyperparameters):
     for name, value in env.to_env_vars().items():
         # TODO: figure out why passing additional framework parameters
         # (new with SageMaker Containers v2.2.6) causes MPI to hang
+        if name == 'SM_TRAINING_ENV':
+            env_dict = json.loads(value)
+            env_dict.pop('additional_framework_parameters', None)
+            value = json.dumps(env_dict)
+
         if not name == 'SM_FRAMEWORK_PARAMS':
             mpi_command += ' -x {}="{}"'.format(name, value)
 
