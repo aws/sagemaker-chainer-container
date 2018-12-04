@@ -79,7 +79,7 @@ def default_output_fn(prediction, accept):
                 response: the serialized data to return
                 accept: the content-type that the data was transformed to.
     """
-    return worker.Response(encoders.encode(prediction, accept), accept)
+    return worker.Response(response=encoders.encode(prediction, accept), mimetype=accept)
 
 
 def default_model_fn(model_dir):
