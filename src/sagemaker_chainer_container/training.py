@@ -199,7 +199,7 @@ def _get_mpi_command(env, hyperparameters):
         # (new with SageMaker Containers v2.2.6) causes MPI to hang
         if name == 'SM_TRAINING_ENV':
             env_dict = json.loads(value)
-            del env_dict['additional_framework_parameters']
+            env_dict.pop('additional_framework_parameters', None)
             value = json.dumps(env_dict)
 
         if not name == 'SM_FRAMEWORK_PARAMS':
