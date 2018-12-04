@@ -95,21 +95,21 @@ def test_output_fn_json(np_array):
     response = serving.default_output_fn(np_array, content_types.JSON)
 
     assert response.get_data(as_text=True) == encoders.array_to_json(np_array.tolist())
-    assert response.content_type == content_types.JSON
+    assert response.mimetype == content_types.JSON
 
 
 def test_output_fn_csv(np_array):
     response = serving.default_output_fn(np_array, content_types.CSV)
 
     assert response.get_data(as_text=True) == '1.0,1.0\n1.0,1.0\n'
-    assert response.content_type == content_types.CSV
+    assert response.mimetype == content_types.CSV
 
 
 def test_output_fn_npz(np_array):
     response = serving.default_output_fn(np_array, content_types.NPY)
 
     assert response.get_data() == encoders.array_to_npy(np_array)
-    assert response.content_type == content_types.NPY
+    assert response.mimetype == content_types.NPY
 
 
 def test_input_fn_bad_accept():
