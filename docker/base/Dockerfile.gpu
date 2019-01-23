@@ -7,8 +7,8 @@ RUN apt-get update && \
 # install pip
 RUN cd /tmp && \
      curl -O https://bootstrap.pypa.io/get-pip.py && \
-     python2 get-pip.py && \
-     python3 get-pip.py && \
+     python2 get-pip.py 'pip<=18.1' && \
+     python3 get-pip.py 'pip<=18.1' && \
      rm get-pip.py
 
 # CUDA-aware OpenMPI:
