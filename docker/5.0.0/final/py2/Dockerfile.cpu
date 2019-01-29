@@ -17,5 +17,9 @@ COPY dist/sagemaker_chainer_container-1.0-py2.py3-none-any.whl /sagemaker_chaine
 
 RUN pip2 install --no-cache /sagemaker_chainer_container-1.0-py2.py3-none-any.whl
 
+ENV PYTHONIOENCODING=UTF-8 \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8
+
 ENV SAGEMAKER_TRAINING_MODULE sagemaker_chainer_container.training:main
 ENV SAGEMAKER_SERVING_MODULE sagemaker_chainer_container.serving:main
