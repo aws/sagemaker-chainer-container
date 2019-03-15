@@ -40,6 +40,6 @@ setup(
         'test': [
             'tox', 'flake8', 'coverage', 'flake8-import-order', 'pytest', 'pytest-cov',
             'pytest-xdist', 'mock', 'Flask', 'boto3>=1.4.8', 'docker-compose',
-            'nvidia-docker-compose', 'sagemaker>=1.3.0', 'PyYAML'
+            'nvidia-docker-compose', 'sagemaker>=1.3.0', 'PyYAML==3.10'
         ]
     })
