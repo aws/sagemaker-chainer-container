@@ -1,14 +1,17 @@
 FROM nvidia/cuda:9.0-cudnn7-devel
 
 RUN apt-get update && \
-    apt-get -y install build-essential python-dev python3-dev git wget curl nginx openssh-server libgtk2.0-dev && \
+    apt-get -y install software-properties-common build-essential python-dev git wget curl nginx openssh-server libgtk2.0-dev && \
+    add-apt-repository ppa:deadsnakes/ppa -y && \
     apt-get clean
+
+RUN apt-get update && apt-get -y install python3.6-dev && apt-get clean
 
 # install pip
 RUN cd /tmp && \
      curl -O https://bootstrap.pypa.io/get-pip.py && \
      python2 get-pip.py 'pip<=18.1' && \
-     python3 get-pip.py 'pip<=18.1' && \
+     python3.6 get-pip.py 'pip<=18.1' && \
      rm get-pip.py
 
 # CUDA-aware OpenMPI:
