@@ -1,14 +1,18 @@
 FROM ubuntu:16.04
 
-RUN  apt-get update && \
-    apt-get -y install build-essential python-dev python3-dev curl nginx openssh-server \
+RUN apt-get update && \
+    apt-get -y install software-properties-common build-essential python-dev curl nginx openssh-server \
     libopencv-dev python-tk libopenblas-dev libgtk2.0-dev git && \
+    add-apt-repository ppa:deadsnakes/ppa -y && \
+    apt-get clean
+
+RUN apt-get update && apt-get -y install python3.6-dev && \
     apt-get clean
 
 RUN cd /tmp && \
      curl -O https://bootstrap.pypa.io/get-pip.py && \
      python2 get-pip.py 'pip<=18.1' && \
-     python3 get-pip.py 'pip<=18.1' && \
+     python3.6 get-pip.py 'pip<=18.1' && \
      rm get-pip.py
 
 # https://stackoverflow.com/questions/29274638/opencv-libdc1394-error-failed-to-initialize-libdc1394
