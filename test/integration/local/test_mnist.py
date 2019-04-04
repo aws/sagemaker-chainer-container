@@ -12,13 +12,12 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import csv
 import os
 
 import numpy as np
 import pytest
 from sagemaker.chainer import Chainer
-from sagemaker.predictor import csv_serializer, json_deserializer, json_serializer
+from sagemaker.predictor import csv_deserializer, csv_serializer, json_deserializer, json_serializer
 
 from test.utils import test_utils
 
@@ -107,7 +106,8 @@ def test_chainer_mnist_custom_loop(docker_image, sagemaker_local_session, instan
 @pytest.mark.parametrize('customer_script',
                          ['distributed_customer_script.py',
                           'distributed_customer_script_with_env_vars.py'])
-def test_chainer_mnist_distributed(docker_image, sagemaker_local_session, instance_type, customer_script, tmpdir):
+def test_chainer_mnist_distributed(docker_image, sagemaker_local_session, instance_type,
+                                   customer_script, tmpdir):
     if instance_type == 'local_gpu':
         pytest.skip('Local Mode does not support distributed GPU training.')
 
@@ -156,17 +156,3 @@ def _json_predictor(estimator, instance_type):
     predictor.accept = 'application/json'
     predictor.deserializer = json_deserializer
     return predictor
-
-
-class CsvDeserializer():
-    def __init__(self):
-        self.accept = 'text/csv'
-
-    def __call__(self, stream, content_type):
-        try:
-            return list(csv.reader(stream.read().decode('utf-8').splitlines()))
-        finally:
-            stream.close()
-
-
-csv_deserializer = CsvDeserializer()
