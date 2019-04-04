@@ -162,7 +162,7 @@ if __name__ == '__main__':
 
     trainer.run()
 
-    # TODO: the MPI command makes the SM_HOSTS variable an invalid JSON
+    # the MPI command makes the SM_HOSTS variable an invalid JSON
     hosts = os.environ['SM_HOSTS']
     master_node = hosts[1:hosts.find(',')]
 

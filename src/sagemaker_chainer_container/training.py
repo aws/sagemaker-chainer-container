@@ -203,6 +203,7 @@ def _get_mpi_command(env, hyperparameters):
             value = json.dumps(env_dict)
 
         if not name == 'SM_FRAMEWORK_PARAMS':
+            # TODO: preserve JSON encoding for environment variable values
             mpi_command += ' -x {}="{}"'.format(name, value)
 
     mpi_command += ' {} '.format(additional_mpi_options) + ' {}'.format(_MPI_SCRIPT)
