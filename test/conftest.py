@@ -20,7 +20,7 @@ import tempfile
 
 import boto3
 import pytest
-from sagemaker import Session
+from sagemaker import LocalSession, Session
 from sagemaker.chainer import Chainer
 
 from test.utils import local_mode
@@ -112,8 +112,10 @@ def fixture_aws_id(request):
 
 
 @pytest.fixture(scope='session', name='instance_type')
-def fixture_instance_type(request):
-    return request.config.getoption('--instance-type')
+def fixture_instance_type(request, processor):
+    provided_instance_type = request.config.getoption('--instance-type')
+    default_instance_type = 'local' if processor == 'cpu' else 'local_gpu'
+    return provided_instance_type or default_instance_type
 
 
 @pytest.fixture(scope='session', name='docker_registry')
@@ -129,6 +131,11 @@ def fixture_ecr_image(docker_registry, docker_base_name, tag):
 @pytest.fixture(scope='session', name='sagemaker_session')
 def fixture_sagemaker_session(region):
     return Session(boto_session=boto3.Session(region_name=region))
+
+
+@pytest.fixture(scope='session', name='sagemaker_local_session')
+def fixture_sagemaker_local_session(region):
+    return LocalSession(boto_session=boto3.Session(region_name=region))
 
 
 @pytest.fixture(scope='session', autouse=True, name='build_base_image')
