@@ -162,8 +162,13 @@ if __name__ == '__main__':
 
     trainer.run()
 
+    # the MPI command makes the SM_HOSTS variable an invalid JSON
+    hosts = os.environ['SM_HOSTS']
+    master_node = hosts[1:hosts.find(',')]
+
     # only save the model in the master node
-    if args.host == 'algo-1':
+    if args.host == master_node:
+        print('saving model')
         serializers.save_npz(os.path.join(os.environ['SM_MODEL_DIR'], 'model.npz'), model)
 
 

@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -203,6 +203,7 @@ def _get_mpi_command(env, hyperparameters):
             value = json.dumps(env_dict)
 
         if not name == 'SM_FRAMEWORK_PARAMS':
+            # TODO: preserve JSON encoding for environment variable values
             mpi_command += ' -x {}="{}"'.format(name, value)
 
     mpi_command += ' {} '.format(additional_mpi_options) + ' {}'.format(_MPI_SCRIPT)

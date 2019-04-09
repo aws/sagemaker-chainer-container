@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -16,109 +16,143 @@ import os
 
 import numpy as np
 import pytest
+from sagemaker.chainer import Chainer
+from sagemaker.predictor import csv_deserializer, csv_serializer, json_deserializer, json_serializer
 
-from test.utils import local_mode, test_utils
+from test.utils import test_utils
 
 path = os.path.dirname(os.path.realpath(__file__))
 mnist_path = os.path.join(path, '..', '..', 'resources', 'mnist')
 data_dir = os.path.join(mnist_path, 'data')
 
 
-def test_chainer_mnist_single_machine(docker_image, opt_ml, use_gpu):
-
+def test_chainer_mnist_single_machine(docker_image, sagemaker_local_session, instance_type, tmpdir):
     customer_script = 'single_machine_customer_script.py'
     hyperparameters = {'batch-size': 10000, 'epochs': 1}
 
-    local_mode.train(customer_script, data_dir, docker_image, opt_ml,
-                     hyperparameters=hyperparameters, source_dir=mnist_path, use_gpu=use_gpu)
+    estimator = Chainer(entry_point=customer_script,
+                        source_dir=mnist_path,
+                        role='SageMakerRole',
+                        image_name=docker_image,
+                        train_instance_count=1,
+                        train_instance_type=instance_type,
+                        sagemaker_session=sagemaker_local_session,
+                        hyperparameters=hyperparameters,
+                        output_path='file://{}'.format(tmpdir))
 
-    files = ['model/model.npz', 'output/success', 'output/data/accuracy.png',
-             'output/data/cg.dot', 'output/data/log', 'output/data/loss.png']
+    estimator.fit({'train': 'file://{}'.format(os.path.join(data_dir, 'train')),
+                   'test': 'file://{}'.format(os.path.join(data_dir, 'test'))})
 
-    test_utils.files_exist(opt_ml, files)
+    success_files = {
+        'model': ['model.npz'],
+        'output': ['success', 'data/accuracy.png', 'data/cg.dot', 'data/log', 'data/loss.png'],
+    }
+    test_utils.files_exist(str(tmpdir), success_files)
 
-    assert not local_mode.file_exists(opt_ml, 'output/failure'), 'Failure happened'
+    request_data = np.zeros((100, 784), dtype='float32')
 
-    script_path = os.path.join(mnist_path, customer_script)
+    test_utils.predict_and_assert_response_length(estimator, request_data, instance_type)
+    test_utils.predict_and_assert_response_length(estimator, request_data, instance_type,
+                                                  csv_serializer, csv_deserializer, 'text/csv')
 
-    with local_mode.serve(script_path, model_dir=None, image_name=docker_image,
-                          opt_ml=opt_ml, use_gpu=use_gpu, source_dir=mnist_path):
+    test_arrays = [np.zeros((100, 784), dtype='float32'),
+                   np.zeros((100, 1, 28, 28), dtype='float32'),
+                   np.zeros((100, 28, 28), dtype='float32')]
 
-        test_arrays = [np.zeros((100, 784), dtype='float32'),
-                       np.zeros((100, 1, 28, 28), dtype='float32'),
-                       np.zeros((100, 28, 28), dtype='float32')]
-
-        request_data = np.zeros((100, 784), dtype='float32')
-
-        data_as_list = request_data.tolist()
-
-        test_utils.predict_and_assert_response_length(data_as_list, 'text/csv')
-
-        for array in test_arrays:
-            # JSON and NPY can take multidimensional (n > 2) arrays
-            data_as_list = array.tolist()
-            test_utils.predict_and_assert_response_length(data_as_list, 'application/json')
-            test_utils.predict_and_assert_response_length(request_data, 'application/x-npy')
+    with test_utils.local_mode_lock():
+        try:
+            predictor = _json_predictor(estimator, instance_type)
+            for array in test_arrays:
+                response = predictor.predict(array)
+                assert len(response) == len(array)
+        finally:
+            predictor.delete_endpoint()
 
 
-def test_chainer_mnist_custom_loop(docker_image, opt_ml, use_gpu):
-
+def test_chainer_mnist_custom_loop(docker_image, sagemaker_local_session, instance_type, tmpdir):
     customer_script = 'single_machine_custom_loop.py'
     hyperparameters = {'batch-size': 10000, 'epochs': 1}
 
-    local_mode.train(customer_script, data_dir, docker_image, opt_ml,
-                     hyperparameters=hyperparameters, source_dir=mnist_path, use_gpu=use_gpu)
+    estimator = Chainer(entry_point=customer_script,
+                        source_dir=mnist_path,
+                        role='SageMakerRole',
+                        image_name=docker_image,
+                        train_instance_count=1,
+                        train_instance_type=instance_type,
+                        sagemaker_session=sagemaker_local_session,
+                        hyperparameters=hyperparameters,
+                        output_path='file://{}'.format(tmpdir))
 
-    files = ['model/model.npz', 'output/success']
+    estimator.fit({'train': 'file://{}'.format(os.path.join(data_dir, 'train')),
+                   'test': 'file://{}'.format(os.path.join(data_dir, 'test'))})
 
-    test_utils.files_exist(opt_ml, files)
+    success_files = {
+        'model': ['model.npz'],
+        'output': ['success'],
+    }
 
-    assert not local_mode.file_exists(opt_ml, 'output/failure'), 'Failure happened'
+    test_utils.files_exist(str(tmpdir), success_files)
 
-    script_path = os.path.join(mnist_path, customer_script)
+    request_data = np.zeros((100, 784), dtype='float32')
 
-    with local_mode.serve(script_path, model_dir=None, image_name=docker_image, opt_ml=opt_ml):
-
-        request_data = np.zeros((100, 784), dtype='float32')
-
-        data_as_list = request_data.tolist()
-
-        test_utils.predict_and_assert_response_length(data_as_list, 'application/json')
-        test_utils.predict_and_assert_response_length(data_as_list, 'text/csv')
-        test_utils.predict_and_assert_response_length(request_data, 'application/x-npy')
+    test_utils.predict_and_assert_response_length(estimator, request_data, instance_type)
+    test_utils.predict_and_assert_response_length(estimator, request_data, instance_type,
+                                                  json_serializer, json_deserializer,
+                                                  'application/json')
+    test_utils.predict_and_assert_response_length(estimator, request_data, instance_type,
+                                                  csv_serializer, csv_deserializer, 'text/csv')
 
 
 @pytest.mark.parametrize('customer_script',
                          ['distributed_customer_script.py',
                           'distributed_customer_script_with_env_vars.py'])
-def test_chainer_mnist_distributed(docker_image, opt_ml, use_gpu, customer_script):
+def test_chainer_mnist_distributed(docker_image, sagemaker_local_session, instance_type,
+                                   customer_script, tmpdir):
+    if instance_type == 'local_gpu':
+        pytest.skip('Local Mode does not support distributed GPU training.')
 
-    cluster_size = 2
     # pure_nccl communicator hangs when only one gpu is available.
+    cluster_size = 2
     hyperparameters = {'sagemaker_process_slots_per_host': 1,
                        'sagemaker_num_processes': cluster_size,
                        'batch-size': 10000,
                        'epochs': 1,
                        'communicator': 'hierarchical'}
 
-    local_mode.train(customer_script, data_dir, docker_image, opt_ml,
-                     hyperparameters=hyperparameters,
-                     cluster_size=cluster_size, source_dir=mnist_path, use_gpu=use_gpu)
+    estimator = Chainer(entry_point=customer_script,
+                        source_dir=mnist_path,
+                        role='SageMakerRole',
+                        image_name=docker_image,
+                        train_instance_count=cluster_size,
+                        train_instance_type=instance_type,
+                        sagemaker_session=sagemaker_local_session,
+                        hyperparameters=hyperparameters,
+                        output_path='file://{}'.format(tmpdir))
 
-    files = ['model/model.npz', 'output/success', 'output/data/accuracy.png',
-             'output/data/cg.dot', 'output/data/log', 'output/data/loss.png']
+    estimator.fit({'train': 'file://{}'.format(os.path.join(data_dir, 'train')),
+                   'test': 'file://{}'.format(os.path.join(data_dir, 'test'))})
 
-    test_utils.files_exist(opt_ml, files)
+    success_files = {
+        'model': ['model.npz'],
+        'output': ['success', 'data/accuracy.png', 'data/cg.dot', 'data/log', 'data/loss.png'],
+    }
 
-    assert not local_mode.file_exists(opt_ml, 'output/failure'), 'Failure happened'
+    test_utils.files_exist(str(tmpdir), success_files)
 
-    with local_mode.serve(os.path.join(mnist_path, customer_script), model_dir=None,
-                          image_name=docker_image, opt_ml=opt_ml):
+    request_data = np.zeros((100, 784), dtype='float32')
 
-        request_data = np.zeros((100, 784), dtype='float32')
+    test_utils.predict_and_assert_response_length(estimator, request_data, instance_type)
+    test_utils.predict_and_assert_response_length(estimator, request_data, instance_type,
+                                                  json_serializer, json_deserializer,
+                                                  'application/json')
+    test_utils.predict_and_assert_response_length(estimator, request_data, instance_type,
+                                                  csv_serializer, csv_deserializer, 'text/csv')
 
-        data_as_list = request_data.tolist()
 
-        test_utils.predict_and_assert_response_length(data_as_list, 'application/json')
-        test_utils.predict_and_assert_response_length(data_as_list, 'text/csv')
-        test_utils.predict_and_assert_response_length(request_data, 'application/x-npy')
+def _json_predictor(estimator, instance_type):
+    predictor = estimator.deploy(1, instance_type)
+    predictor.content_type = 'application/json'
+    predictor.serializer = json_serializer
+    predictor.accept = 'application/json'
+    predictor.deserializer = json_deserializer
+    return predictor

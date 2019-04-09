@@ -166,7 +166,7 @@ if __name__ == '__main__':
     trainer.run()
 
     # only save the model in the master node
-    if args.host == 'algo-1':
+    if args.host == str(env.hosts[0]):
         serializers.save_npz(os.path.join(env.model_dir, 'model.npz'), model)
 
 

@@ -27,3 +27,4 @@ venv/
 .pytest_cache/
 *.swp
 *.whl
+test/resources/local_mode_lock
