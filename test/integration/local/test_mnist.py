@@ -24,7 +24,6 @@ from test.utils import test_utils
 path = os.path.dirname(os.path.realpath(__file__))
 mnist_path = os.path.join(path, '..', '..', 'resources', 'mnist')
 data_dir = os.path.join(mnist_path, 'data')
-role = 'unused-dummy-role'
 
 
 def test_chainer_mnist_single_machine(docker_image, sagemaker_local_session, instance_type, tmpdir):
@@ -33,7 +32,7 @@ def test_chainer_mnist_single_machine(docker_image, sagemaker_local_session, ins
 
     estimator = Chainer(entry_point=customer_script,
                         source_dir=mnist_path,
-                        role=role,
+                        role='SageMakerRole',
                         image_name=docker_image,
                         train_instance_count=1,
                         train_instance_type=instance_type,
@@ -76,7 +75,7 @@ def test_chainer_mnist_custom_loop(docker_image, sagemaker_local_session, instan
 
     estimator = Chainer(entry_point=customer_script,
                         source_dir=mnist_path,
-                        role=role,
+                        role='SageMakerRole',
                         image_name=docker_image,
                         train_instance_count=1,
                         train_instance_type=instance_type,
@@ -122,7 +121,7 @@ def test_chainer_mnist_distributed(docker_image, sagemaker_local_session, instan
 
     estimator = Chainer(entry_point=customer_script,
                         source_dir=mnist_path,
-                        role=role,
+                        role='SageMakerRole',
                         image_name=docker_image,
                         train_instance_count=cluster_size,
                         train_instance_type=instance_type,

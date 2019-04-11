@@ -28,7 +28,7 @@ def test_serving_calls_model_fn_once(docker_image, sagemaker_local_session):
     model_path = 'file://{}'.format(os.path.join(resources_path, 'model.tar.gz'))
 
     model = ChainerModel(model_path,
-                         'unused-dummy-role',
+                         'SageMakerRole',
                          script_path,
                          image=docker_image,
                          model_server_workers=2,
