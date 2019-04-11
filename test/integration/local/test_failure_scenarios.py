@@ -66,13 +66,11 @@ def test_training_jobs_do_not_stall(docker_image, sagemaker_local_session, tmpdi
                         hyperparameters=hyperparameters,
                         output_path='file://{}'.format(tmpdir))
 
-    # Local Mode doesn't export model/output artifacts upon failure
-    # https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/local/image.py#L133-L141
-    with pytest.raises(RuntimeError) as e:
+    with pytest.raises(RuntimeError):
         estimator.fit()
 
-    assert 'Failed to run:' in str(e)
-    assert 'Process exited with code: 1' in str(e)
+    failure_files = {'output': ['failure', os.path.join('data', 'this_file_is_expected')]}
+    test_utils.files_exist(str(tmpdir), failure_files)
 
 
 def test_single_machine_failure(docker_image, instance_type, sagemaker_local_session, tmpdir):
@@ -86,20 +84,19 @@ def test_single_machine_failure(docker_image, instance_type, sagemaker_local_ses
                         sagemaker_session=sagemaker_local_session,
                         output_path='file://{}'.format(tmpdir))
 
-    # Local Mode doesn't export model/output artifacts upon failure
-    # https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/local/image.py#L133-L141
-    with pytest.raises(RuntimeError) as e:
+    with pytest.raises(RuntimeError):
         estimator.fit()
 
-    assert 'Failed to run:' in str(e)
-    assert 'Process exited with code: 1' in str(e)
+    failure_files = {'output': ['failure', os.path.join('data', 'this_file_is_expected')]}
+    test_utils.files_exist(str(tmpdir), failure_files)
 
 
 def test_distributed_failure(docker_image, sagemaker_local_session, tmpdir):
     customer_script = 'failure_script.py'
     cluster_size = 2
+    failure_node = 1
     hyperparameters = {'sagemaker_process_slots_per_host': 1,
-                       'sagemaker_num_processes': cluster_size, 'node_to_fail': 1}
+                       'sagemaker_num_processes': cluster_size, 'node_to_fail': failure_node}
 
     estimator = Chainer(entry_point=customer_script,
                         source_dir=resource_path,
@@ -111,10 +108,9 @@ def test_distributed_failure(docker_image, sagemaker_local_session, tmpdir):
                         hyperparameters=hyperparameters,
                         output_path='file://{}'.format(tmpdir))
 
-    # Local Mode doesn't export model/output artifacts upon failure
-    # https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/local/image.py#L133-L141
-    with pytest.raises(RuntimeError) as e:
+    with pytest.raises(RuntimeError):
         estimator.fit()
 
-    assert 'Failed to run:' in str(e)
-    assert 'Process exited with code: 1' in str(e)
+    node_failure_file = os.path.join('data', 'file_from_node_{}'.format(failure_node))
+    failure_files = {'output': ['failure', node_failure_file]}
+    test_utils.files_exist(str(tmpdir), failure_files)
