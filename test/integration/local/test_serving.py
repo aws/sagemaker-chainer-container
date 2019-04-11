@@ -23,12 +23,16 @@ path = os.path.dirname(os.path.realpath(__file__))
 resources_path = os.path.abspath(os.path.join(path, '..', '..', 'resources', 'serving'))
 
 
-def test_serving_calls_model_fn_once(docker_image, opt_ml):
+def test_serving_calls_model_fn_once(docker_image, sagemaker_local_session):
     script_path = os.path.join(resources_path, 'call_model_fn_once.py')
     model_path = 'file://{}'.format(os.path.join(resources_path, 'model.tar.gz'))
 
-    model = ChainerModel(model_path, 'SageMakerRole', script_path, image=docker_image,
-                         model_server_workers=2)
+    model = ChainerModel(model_path,
+                         'SageMakerRole',
+                         script_path,
+                         image=docker_image,
+                         model_server_workers=2,
+                         sagemaker_session=sagemaker_local_session)
 
     with test_utils.local_mode_lock():
         try:
