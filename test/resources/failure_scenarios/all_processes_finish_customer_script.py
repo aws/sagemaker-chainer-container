@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -38,12 +38,14 @@ if __name__ == '__main__':
     num_hosts = len(args.hosts)
     print('process %s on host %s of %s starting' % (comm.intra_rank, args.current_host, num_hosts))
 
-    if comm.intra_rank == 1 and args.current_host != 'algo-1':
-        os.makedirs(args.output_data_dir)
+    if comm.intra_rank == 1 and args.current_host != args.hosts[0]:
+        host_output_prefix = os.path.join(args.output_data_dir, args.current_host[:args.current_host.rfind('-')])
+        os.makedirs(host_output_prefix)
+
         # this sleep time must be longer than the polling interval to check if mpi is finished.
         print('process %s on host %s of %s sleeping' % (comm.intra_rank, args.current_host, num_hosts))
 
         time.sleep(20)
-        open(os.path.join(args.output_data_dir, 'process_could_complete'), 'a').close()
+        open(os.path.join(host_output_prefix, 'process_could_complete'), 'a').close()
 
     print('process {} on host {} exiting'.format(comm.intra_rank, args.current_host))

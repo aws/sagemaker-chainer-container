@@ -13,6 +13,7 @@
 from __future__ import print_function, absolute_import
 
 import argparse
+import os
 
 import chainermn
 import sagemaker_containers
@@ -27,10 +28,12 @@ if __name__ == '__main__':
                         default='naive' if env.num_gpus == 0 else 'pure_nccl')
     parser.add_argument('--hosts', type=str, default=env.hosts)
     parser.add_argument('--node_to_fail', type=int)
+    parser.add_argument('--output-data-dir', type=str, default=env.output_data_dir)
 
     args = parser.parse_args()
 
     if len(args.hosts) == 1:
+        open(os.path.join(env.output_data_dir, 'this_file_is_expected'), 'a').close()
         raise Exception('Exception on a single machine')
 
     comm = chainermn.create_communicator(args.communicator)
@@ -40,4 +43,5 @@ if __name__ == '__main__':
 
     if args.node_to_fail == rank:
         print('exception from node {}'.format(rank))
+        open(os.path.join(env.output_data_dir, 'file_from_node_{}'.format(rank)), 'a').close()
         raise Exception('exception from node {}'.format(rank))
