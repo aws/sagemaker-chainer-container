@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -23,7 +23,7 @@ import pytest
 from sagemaker import LocalSession, Session
 from sagemaker.chainer import Chainer
 
-from test.utils import local_mode
+from test.utils import image_utils
 
 logger = logging.getLogger(__name__)
 logging.getLogger('boto').setLevel(logging.INFO)
@@ -142,11 +142,11 @@ def fixture_sagemaker_local_session(region):
 def fixture_build_base_image(request, framework_version, processor, tag, docker_base_name):
     build_base_image = request.config.getoption('--build-base-image')
     if build_base_image:
-        return local_mode.build_base_image(framework_name=docker_base_name,
-                                           framework_version=framework_version,
-                                           base_image_tag=tag,
-                                           processor=processor,
-                                           cwd=os.path.join(dir_path, '..'))
+        return image_utils.build_base_image(framework_name=docker_base_name,
+                                            framework_version=framework_version,
+                                            base_image_tag=tag,
+                                            processor=processor,
+                                            cwd=os.path.join(dir_path, '..'))
 
     return tag
 
@@ -155,11 +155,11 @@ def fixture_build_base_image(request, framework_version, processor, tag, docker_
 def fixture_build_image(request, py_version, framework_version, processor, tag, docker_base_name):
     build_image = request.config.getoption('--build-image')
     if build_image:
-        return local_mode.build_image(framework_name=docker_base_name,
-                                      py_version=py_version,
-                                      framework_version=framework_version,
-                                      processor=processor,
-                                      tag=tag,
-                                      cwd=os.path.join(dir_path, '..'))
+        return image_utils.build_image(framework_name=docker_base_name,
+                                       py_version=py_version,
+                                       framework_version=framework_version,
+                                       processor=processor,
+                                       tag=tag,
+                                       cwd=os.path.join(dir_path, '..'))
 
     return tag

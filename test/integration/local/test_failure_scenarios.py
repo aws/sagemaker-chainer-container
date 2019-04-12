@@ -21,6 +21,7 @@ from test.utils import test_utils
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
 resource_path = os.path.join(current_dir, '..', '..', 'resources', 'failure_scenarios')
+role = 'unused/dummy-role'
 
 
 def test_all_processes_finish_with_mpi(docker_image, sagemaker_local_session, tmpdir):
@@ -33,7 +34,7 @@ def test_all_processes_finish_with_mpi(docker_image, sagemaker_local_session, tm
 
     estimator = Chainer(entry_point=customer_script,
                         source_dir=resource_path,
-                        role='SageMakerRole',
+                        role=role,
                         image_name=docker_image,
                         train_instance_count=2,
                         train_instance_type='local',
@@ -58,7 +59,7 @@ def test_training_jobs_do_not_stall(docker_image, sagemaker_local_session, tmpdi
 
     estimator = Chainer(entry_point=customer_script,
                         source_dir=resource_path,
-                        role='SageMakerRole',
+                        role=role,
                         image_name=docker_image,
                         train_instance_count=2,
                         train_instance_type='local',
@@ -77,7 +78,7 @@ def test_single_machine_failure(docker_image, instance_type, sagemaker_local_ses
     customer_script = 'failure_script.py'
     estimator = Chainer(entry_point=customer_script,
                         source_dir=resource_path,
-                        role='SageMakerRole',
+                        role=role,
                         image_name=docker_image,
                         train_instance_count=1,
                         train_instance_type=instance_type,
@@ -100,7 +101,7 @@ def test_distributed_failure(docker_image, sagemaker_local_session, tmpdir):
 
     estimator = Chainer(entry_point=customer_script,
                         source_dir=resource_path,
-                        role='SageMakerRole',
+                        role=role,
                         image_name=docker_image,
                         train_instance_count=cluster_size,
                         train_instance_type='local',
