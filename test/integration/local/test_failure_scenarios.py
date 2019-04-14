@@ -67,7 +67,7 @@ def test_training_jobs_do_not_stall(docker_image, sagemaker_local_session, tmpdi
                         hyperparameters=hyperparameters,
                         output_path='file://{}'.format(tmpdir))
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(Exception):
         estimator.fit()
 
     failure_files = {'output': ['failure', os.path.join('data', 'this_file_is_expected')]}
@@ -109,7 +109,7 @@ def test_distributed_failure(docker_image, sagemaker_local_session, tmpdir):
                         hyperparameters=hyperparameters,
                         output_path='file://{}'.format(tmpdir))
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(Exception):
         estimator.fit()
 
     node_failure_file = os.path.join('data', 'file_from_node_{}'.format(failure_node))
