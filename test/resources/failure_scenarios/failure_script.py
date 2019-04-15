@@ -14,6 +14,7 @@ from __future__ import print_function, absolute_import
 
 import argparse
 import os
+import time
 
 import chainermn
 import sagemaker_containers
@@ -45,3 +46,5 @@ if __name__ == '__main__':
         print('exception from node {}'.format(rank))
         open(os.path.join(env.output_data_dir, 'file_from_node_{}'.format(rank)), 'a').close()
         raise Exception('exception from node {}'.format(rank))
+    else:
+        time.sleep(2)

@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import os
+import time
 
 import chainermn
 import mpi4py.MPI
@@ -26,4 +27,6 @@ if __name__ == '__main__':
         env = sagemaker_containers.training_env()
         open(os.path.join(env.output_data_dir, 'this_file_is_expected'), 'a').close()
         raise ValueError('failure!')
+    else:
+        time.sleep(2)
     chainermn.create_communicator('naive', mpi_comm)
