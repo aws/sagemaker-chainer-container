@@ -49,4 +49,4 @@ if __name__ == '__main__':
     else:
         # Local Mode can lead to a false positive if the successful container exits first
         # TODO: remove this when Local Mode handles these types of failures correctly
-        time.sleep(8)
+        time.sleep(16)
