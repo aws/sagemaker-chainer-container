@@ -28,5 +28,7 @@ if __name__ == '__main__':
         open(os.path.join(env.output_data_dir, 'this_file_is_expected'), 'a').close()
         raise ValueError('failure!')
     else:
+        # Local Mode can lead to a false positive if the successful container exits first
+        # TODO: remove this when Local Mode handles these types of failures correctly
         time.sleep(2)
     chainermn.create_communicator('naive', mpi_comm)

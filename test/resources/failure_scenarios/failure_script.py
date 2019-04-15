@@ -47,4 +47,6 @@ if __name__ == '__main__':
         open(os.path.join(env.output_data_dir, 'file_from_node_{}'.format(rank)), 'a').close()
         raise Exception('exception from node {}'.format(rank))
     else:
+        # Local Mode can lead to a false positive if the successful container exits first
+        # TODO: remove this when Local Mode handles these types of failures correctly
         time.sleep(2)
