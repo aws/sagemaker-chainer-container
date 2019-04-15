@@ -14,7 +14,6 @@ from __future__ import print_function, absolute_import
 
 import argparse
 import os
-import time
 
 import chainermn
 import sagemaker_containers
@@ -49,4 +48,5 @@ if __name__ == '__main__':
     else:
         # Local Mode can lead to a false positive if the successful container exits first
         # TODO: remove this when Local Mode handles these types of failures correctly
-        time.sleep(30)
+        while True:
+            pass
