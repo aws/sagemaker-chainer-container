@@ -70,22 +70,27 @@ def train(env, hyperparameters):
     use_mpi = bool(hyperparameters.get('sagemaker_use_mpi', len(env.hosts) > 1))
 
     if use_mpi:
+        runner_type = framework.runner.MPIRunnerType
+        # current_host = env.current_host
+        # hosts = list(env.hosts)
+        # _change_hostname(current_host)
+        # _start_ssh_daemon()
 
-        current_host = env.current_host
-        hosts = list(env.hosts)
-        _change_hostname(current_host)
-        _start_ssh_daemon()
+        # _create_mpi_script(env)
 
-        _create_mpi_script(env)
+        # if current_host == _get_master_host_name(hosts):
+        #     _wait_for_worker_nodes_to_start_sshd(hosts)
 
-        if current_host == _get_master_host_name(hosts):
-            _wait_for_worker_nodes_to_start_sshd(hosts)
-
-            _run_mpi_on_all_nodes(env, hyperparameters)
-        else:
-            _wait_for_training_to_finish(env)
+        #     _run_mpi_on_all_nodes(env, hyperparameters)
+        # else:
+        #     _wait_for_training_to_finish(env)
     else:
-        _run_training(env)
+        runner_type = framework.runner.ProcessRunnerType
+        # _run_training(env)
+
+    framework.entry_point.run(env.module_dir, env.user_entry_point,
+                              env.to_cmd_args(), env.to_env_vars(),
+                              runner=runner_type)
 
 
 def _run_training(env):
