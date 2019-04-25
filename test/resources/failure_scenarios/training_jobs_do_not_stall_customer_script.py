@@ -25,5 +25,5 @@ if __name__ == '__main__':
     if mpi_comm.rank == 0:
         env = sagemaker_containers.training_env()
         open(os.path.join(env.output_data_dir, 'this_file_is_expected'), 'a').close()
-        raise ValueError('failure!')
+        raise ValueError('this failure is expected')
     chainermn.create_communicator('naive', mpi_comm)

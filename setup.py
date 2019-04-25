@@ -47,11 +47,10 @@ setup(
     install_requires=['sagemaker-containers>=2.2.5', 'chainer==5.0.0', 'retrying==1.3.3',
                       'numpy==1.16.2'],
 
-    dependency_links=['pip install git+https://github.com/aws/sagemaker-python-sdk-staging'],
     extras_require={
         'test': [
             'tox', 'flake8', 'coverage', 'flake8-import-order', 'pytest', 'pytest-cov',
             'pytest-xdist', 'mock', 'Flask', 'boto3>=1.4.8', 'docker-compose',
-            'nvidia-docker-compose', 'sagemaker>=1.18.14', 'PyYAML==3.10'
+            'nvidia-docker-compose', 'sagemaker==1.18.16', 'PyYAML==3.10'
         ]
     })

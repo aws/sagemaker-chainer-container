@@ -16,7 +16,9 @@ RUN sed -i s/TkAgg/Agg/ matplotlib/mpl-data/matplotlibrc
 WORKDIR /
 
 COPY dist/sagemaker_chainer_container-1.0-py2.py3-none-any.whl /sagemaker_chainer_container-1.0-py2.py3-none-any.whl
+COPY dist/sagemaker_containers-2.4.7.dev0.tar.gz /sagemaker_containers-2.4.7.dev0.tar.gz
 
+RUN pip3 install --no-cache /sagemaker_containers-2.4.7.dev0.tar.gz
 RUN pip3 install --no-cache /sagemaker_chainer_container-1.0-py2.py3-none-any.whl
 
 ENV PYTHONIOENCODING=UTF-8 \

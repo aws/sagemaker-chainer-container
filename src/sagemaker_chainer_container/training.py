@@ -66,11 +66,17 @@ def train(env, hyperparameters):
 
     For more on how distributed training uses these parameters, please see :func:`_get_mpi_command`.
     """
+    framework.modules.download_and_install(env.module_dir)
 
     use_mpi = bool(hyperparameters.get('sagemaker_use_mpi', len(env.hosts) > 1))
+    opts = {}
 
     if use_mpi:
         runner_type = framework.runner.MPIRunnerType
+        opts = {
+            framework.params.MPI_PROCESSES_PER_HOST: hyperparameters.get('sagemaker_process_slots_per_host'),
+            framework.params.MPI_NUM_PROCESSES: hyperparameters.get('sagemaker_num_processes'),
+        }
         # current_host = env.current_host
         # hosts = list(env.hosts)
         # _change_hostname(current_host)
@@ -88,9 +94,12 @@ def train(env, hyperparameters):
         runner_type = framework.runner.ProcessRunnerType
         # _run_training(env)
 
-    framework.entry_point.run(env.module_dir, env.user_entry_point,
-                              env.to_cmd_args(), env.to_env_vars(),
-                              runner=runner_type)
+    framework.entry_point.run(env.module_dir,
+                              env.user_entry_point,
+                              env.to_cmd_args(),
+                              env.to_env_vars(),
+                              runner=runner_type,
+                              extra_opts=opts)
 
 
 # def _run_training(env):
