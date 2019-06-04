@@ -48,7 +48,6 @@ def test_all_processes_finish_with_mpi(docker_image, sagemaker_local_session, tm
     test_utils.files_exist(str(tmpdir), completion_file)
 
 
-@pytest.mark.skip('The Chainer images do not correctly exit with Local Mode')
 def test_training_jobs_do_not_stall(docker_image, sagemaker_local_session, tmpdir):
     """
     This test validates that training does not stall.
@@ -93,7 +92,6 @@ def test_single_machine_failure(docker_image, instance_type, sagemaker_local_ses
     test_utils.files_exist(str(tmpdir), failure_files)
 
 
-@pytest.mark.skip('The Chainer images do not correctly exit with Local Mode')
 def test_distributed_failure(docker_image, sagemaker_local_session, tmpdir):
     customer_script = 'failure_script.py'
     cluster_size = 2
