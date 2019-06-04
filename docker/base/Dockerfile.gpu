@@ -20,7 +20,7 @@ RUN cd /tmp && \
         wget "https://www.open-mpi.org/software/ompi/v2.1/downloads/openmpi-2.1.2.tar.gz" && \
         tar xzf openmpi-2.1.2.tar.gz && \
         cd openmpi-2.1.2  && \
-        ./configure --with-cuda  && make all && make -j"$(nproc)" install && ldconfig && rm -rf /tmp/*
+        ./configure --with-cuda && make all && make -j"$(nproc)" install && ldconfig && rm -rf /tmp/*
 
 RUN echo "hwloc_base_binding_policy = none" >> /usr/local/etc/openmpi-mca-params.conf && \
     echo "rmaps_base_mapping_policy = slot" >> /usr/local/etc/openmpi-mca-params.conf
