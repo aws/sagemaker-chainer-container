@@ -22,6 +22,9 @@ RUN cd /tmp && \
         cd openmpi-2.1.2  && \
         ./configure --with-cuda  && make all && make -j"$(nproc)" install && ldconfig && rm -rf /tmp/*
 
+RUN echo "hwloc_base_binding_policy = none" >> /usr/local/etc/openmpi-mca-params.conf && \
+    echo "rmaps_base_mapping_policy = slot" >> /usr/local/etc/openmpi-mca-params.conf
+
 ENV LD_LIBRARY_PATH=/usr/local/openmpi/lib:$LD_LIBRARY_PATH
 
 ENV PATH /usr/local/openmpi/bin/:$PATH
