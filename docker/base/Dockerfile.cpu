@@ -19,24 +19,13 @@ RUN cd /tmp && \
 RUN ln -s /dev/null /dev/raw1394
 
 RUN cd /tmp && \
-    wget "https://download.open-mpi.org/release/hwloc/v2.0/hwloc-2.0.3.tar.gz" && \
-    tar xzf hwloc-2.0.3.tar.gz && \
-    cd hwloc-2.0.3 && \
-    ./configure && make && make install && \
-    rm -rf /tmp/*
+        wget "https://www.open-mpi.org/software/ompi/v2.1/downloads/openmpi-2.1.2.tar.gz" && \
+        tar xzf openmpi-2.1.2.tar.gz && \
+        cd openmpi-2.1.2  && \
+        ./configure --with-cuda  && make all && make -j"$(nproc)" install && ldconfig && rm -rf /tmp/*
 
 RUN echo "hwloc_base_binding_policy = none" >> /usr/local/etc/openmpi-mca-params.conf && \
     echo "rmaps_base_mapping_policy = slot" >> /usr/local/etc/openmpi-mca-params.conf
-
-RUN cd /tmp && \
-    wget "https://www.open-mpi.org/software/ompi/v3.1/downloads/openmpi-3.1.2.tar.gz" && \
-    tar xzf openmpi-3.1.2.tar.gz && \
-    cd openmpi-3.1.2 && \
-    ./configure --enable-orterun-prefix-by-default && \
-    make -j $(nproc) all && \
-    make install && \
-    ldconfig && \
-    rm -rf /tmp/*
 
 ENV LD_LIBRARY_PATH=/usr/local/openmpi/lib:$LD_LIBRARY_PATH
 
