@@ -74,9 +74,10 @@ if __name__ == '__main__':
     parser.add_argument('--frequency', type=int, default=20)
     parser.add_argument('--units', type=int, default=1000)
 
-    parser.add_argument('--model-dir', type=str)
+    parser.add_argument('--model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
     parser.add_argument('--output-data-dir', type=str, default=os.environ['SM_OUTPUT_DATA_DIR'])
     parser.add_argument('--host', type=str, default=os.environ['SM_CURRENT_HOST'])
+    parser.add_argument('--hosts', type=json.loads, default=os.environ['SM_HOSTS'])
     parser.add_argument('--num-gpus', type=int, default=os.environ['SM_NUM_GPUS'])
 
     parser.add_argument('--train', type=str, default=os.environ['SM_CHANNEL_TRAIN'])
@@ -164,9 +165,9 @@ if __name__ == '__main__':
     trainer.run()
 
     # only save the model in the master node
-    if args.host == json.loads(os.environ['SM_HOSTS'])[0]:
+    if args.host == args.hosts[0]:
         print('saving model')
-        serializers.save_npz(os.path.join(os.environ['SM_MODEL_DIR'], 'model.npz'), model)
+        serializers.save_npz(os.path.join(args.model_dir, 'model.npz'), model)
 
 
 def model_fn(model_dir):
