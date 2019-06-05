@@ -2,7 +2,7 @@ FROM ubuntu:16.04
 
 RUN apt-get update && \
     apt-get -y install software-properties-common build-essential python-dev curl nginx openssh-server \
-    libopencv-dev python-tk libopenblas-dev libgtk2.0-dev git && \
+        libopencv-dev python-tk libopenblas-dev libgtk2.0-dev git libnuma-dev && \
     add-apt-repository ppa:deadsnakes/ppa -y && \
     apt-get clean
 
@@ -10,10 +10,10 @@ RUN apt-get update && apt-get -y install python3.6-dev && \
     apt-get clean
 
 RUN cd /tmp && \
-     curl -O https://bootstrap.pypa.io/get-pip.py && \
-     python2 get-pip.py 'pip<=18.1' && \
-     python3.6 get-pip.py 'pip<=18.1' && \
-     rm get-pip.py
+    curl -O https://bootstrap.pypa.io/get-pip.py && \
+    python2 get-pip.py 'pip<=18.1' && \
+    python3.6 get-pip.py 'pip<=18.1' && \
+    rm get-pip.py
 
 # https://stackoverflow.com/questions/29274638/opencv-libdc1394-error-failed-to-initialize-libdc1394
 RUN ln -s /dev/null /dev/raw1394
@@ -23,6 +23,9 @@ RUN cd /tmp && \
         tar xzf openmpi-2.1.2.tar.gz && \
         cd openmpi-2.1.2  && \
         ./configure && make all && make install && ldconfig && rm -rf /tmp/*
+
+RUN echo "hwloc_base_binding_policy = none" >> /usr/local/etc/openmpi-mca-params.conf && \
+    echo "rmaps_base_mapping_policy = slot" >> /usr/local/etc/openmpi-mca-params.conf
 
 ENV LD_LIBRARY_PATH=/usr/local/openmpi/lib:$LD_LIBRARY_PATH
 
@@ -37,9 +40,9 @@ RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so
 
 # Create SSH key.
 RUN mkdir -p /root/.ssh/ && \
-  ssh-keygen -q -t rsa -N '' -f /root/.ssh/id_rsa && \
-  cp /root/.ssh/id_rsa.pub /root/.ssh/authorized_keys && \
-  printf "Host *\n  StrictHostKeyChecking no\n" >> /root/.ssh/config
+    ssh-keygen -q -t rsa -N '' -f /root/.ssh/id_rsa && \
+    cp /root/.ssh/id_rsa.pub /root/.ssh/authorized_keys && \
+    printf "Host *\n  StrictHostKeyChecking no\n" >> /root/.ssh/config
 
 COPY changehostname.c /
 COPY change-hostname.sh /usr/local/bin/change-hostname.sh

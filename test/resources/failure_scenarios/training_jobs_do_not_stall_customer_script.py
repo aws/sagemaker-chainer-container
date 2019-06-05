@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -25,5 +25,5 @@ if __name__ == '__main__':
     if mpi_comm.rank == 0:
         env = sagemaker_containers.training_env()
         open(os.path.join(env.output_data_dir, 'this_file_is_expected'), 'a').close()
-        raise ValueError('failure!')
+        raise ValueError('this failure is expected')
     chainermn.create_communicator('naive', mpi_comm)

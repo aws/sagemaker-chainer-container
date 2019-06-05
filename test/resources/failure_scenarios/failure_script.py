@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -34,7 +34,7 @@ if __name__ == '__main__':
 
     if len(args.hosts) == 1:
         open(os.path.join(env.output_data_dir, 'this_file_is_expected'), 'a').close()
-        raise Exception('Exception on a single machine')
+        raise Exception('intentional exception on a single machine')
 
     comm = chainermn.create_communicator(args.communicator)
 
@@ -42,6 +42,6 @@ if __name__ == '__main__':
     rank = comm.inter_rank
 
     if args.node_to_fail == rank:
-        print('exception from node {}'.format(rank))
+        print('intentional exception from node {}'.format(rank))
         open(os.path.join(env.output_data_dir, 'file_from_node_{}'.format(rank)), 'a').close()
-        raise Exception('exception from node {}'.format(rank))
+        raise Exception('intentional exception from node {}'.format(rank))
