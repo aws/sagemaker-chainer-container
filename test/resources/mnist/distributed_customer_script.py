@@ -26,7 +26,7 @@ import chainermn
 import numpy as np
 import sagemaker_containers
 
-logger = logging.getLogger('user_script')
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 

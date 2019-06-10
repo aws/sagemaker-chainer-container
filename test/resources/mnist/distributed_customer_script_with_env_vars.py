@@ -26,7 +26,7 @@ from chainer.training import extensions
 import chainermn
 import numpy as np
 
-logger = logging.getLogger('user_script')
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
