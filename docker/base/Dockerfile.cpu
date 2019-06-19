@@ -19,10 +19,10 @@ RUN cd /tmp && \
 RUN ln -s /dev/null /dev/raw1394
 
 RUN cd /tmp && \
-        wget "https://www.open-mpi.org/software/ompi/v2.1/downloads/openmpi-2.1.2.tar.gz" && \
-        tar xzf openmpi-2.1.2.tar.gz && \
-        cd openmpi-2.1.2  && \
-        ./configure && make all && make install && ldconfig && rm -rf /tmp/*
+        wget https://www.open-mpi.org/software/ompi/v4.0/downloads/openmpi-4.0.0.tar.gz && \
+        tar xzf openmpi-4.0.0.tar.gz && \
+        cd openmpi-4.0.0 && \
+        ./configure --enable-orterun-prefix-by-default && make all && make install && ldconfig && rm -rf /tmp/*
 
 RUN echo "hwloc_base_binding_policy = none" >> /usr/local/etc/openmpi-mca-params.conf && \
     echo "rmaps_base_mapping_policy = slot" >> /usr/local/etc/openmpi-mca-params.conf
