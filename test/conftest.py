@@ -34,6 +34,11 @@ logging.getLogger('connectionpool.py').setLevel(logging.INFO)
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
+NO_P2_REGIONS = ['ap-east-1', 'ap-northeast-3', 'ap-southeast-2', 'ca-central-1', 'eu-central-1', 'eu-north-1',
+                 'eu-west-2', 'eu-west-3', 'us-west-1', 'sa-east-1']
+NO_P3_REGIONS = ['ap-east-1', 'ap-northeast-3', 'ap-southeast-1', 'ap-southeast-2', 'ap-south-1', 'ca-central-1',
+                 'eu-central-1', 'eu-west-2', 'us-west-1', 'sa-east-1']
+
 
 def pytest_addoption(parser):
     parser.addoption('--build-image', '-D', action="store_true")
@@ -163,3 +168,10 @@ def fixture_build_image(request, py_version, framework_version, processor, tag, 
                                        cwd=os.path.join(dir_path, '..'))
 
     return tag
+
+
+@pytest.fixture(autouse=True)
+def skip_gpu_instance_restricted_regions(region, instance_type):
+    if((region in NO_P2_REGIONS and instance_type.startswith('ml.p2')) or
+       (region in NO_P3_REGIONS and instance_type.startswith('ml.p3'))):
+        pytest.skip('Skipping GPU test in region {}'.format(region))
