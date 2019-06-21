@@ -109,7 +109,7 @@ phases:
 
       - |
         echo '[{
-          "repository": "sagemaker-pytorch",
+          "repository": "sagemaker-chainer",
           "tags": [{
             "source": "5.0.0-cpu-py2",
             "dest": ["5.0.0-cpu-py2", "5.0-cpu-py2", "5.0.0-cpu-py2-'${CODEBUILD_BUILD_ID#*:}'"]
