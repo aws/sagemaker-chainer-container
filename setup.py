@@ -44,7 +44,7 @@ setup(
     # Temporarily freeze sagemaker-containers version to 2.2.5 until we have a proper fix
     # freeze numpy version because of the python2 bug
     # in 16.0: https://github.com/numpy/numpy/pull/12754
-    install_requires=['sagemaker-containers>=2.2.5', 'chainer==5.0.0', 'retrying==1.3.3',
+    install_requires=['sagemaker-containers==2.5.0', 'chainer==5.0.0', 'retrying==1.3.3',
                       'numpy==1.16.2'],
 
     extras_require={
