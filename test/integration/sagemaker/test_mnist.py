@@ -15,12 +15,14 @@ from __future__ import absolute_import
 import os
 
 import numpy as np
+import pytest
 from sagemaker.chainer import Chainer
 from sagemaker.utils import sagemaker_timestamp
 
 from timeout import timeout, timeout_and_delete_endpoint
 
 
+@pytest.mark.deploy_test
 def test_chainer_mnist_single_machine(sagemaker_session, ecr_image, instance_type):
     _test_mnist(sagemaker_session, ecr_image, instance_type, 1, 'single_machine_customer_script.py')
 
