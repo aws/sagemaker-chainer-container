@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import os
 
 import numpy as np
+import pytest
 from sagemaker.chainer import Chainer
 from sagemaker.utils import sagemaker_timestamp
 
