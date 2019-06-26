@@ -22,7 +22,7 @@ phases:
   build:
     commands:
       # prepare the release
-       - git-release --prepare --min-version 1.0
+      - git-release --prepare --min-version 1.0
 
       # install
       - pip3 install -U -e .
@@ -139,7 +139,7 @@ phases:
         }]' > deployments.json
 
       # publish the release to github
-       - git-release --publish
+      - git-release --publish
 
     finally:
       # shut down remote gpu instance
