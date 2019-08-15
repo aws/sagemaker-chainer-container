@@ -132,7 +132,7 @@ phases:
           }],
           "test": [
             "IGNORE_COVERAGE=- tox -e py36 -- -m deploy_test test/integration/sagemaker --py-version 3 --processor cpu --region {region} --docker-base-name '$ECR_REPO' --aws-id {aws-id} --framework-version '$FRAMEWORK_VERSION' --instance-type {cpu-instance-type}",
-            "IGNORE_COVERAGE=- tox -e py36 -- -m deploy_test test/integration/sagemaker --py-version 2 --processor cpu --region {region} --docker-base-name '$ECR_REPO' --aws-id {aws-id} --framework-version '$FRAMEWORK_VERSION' --instance-type {cpu-instance_type}",
+            "IGNORE_COVERAGE=- tox -e py36 -- -m deploy_test test/integration/sagemaker --py-version 2 --processor cpu --region {region} --docker-base-name '$ECR_REPO' --aws-id {aws-id} --framework-version '$FRAMEWORK_VERSION' --instance-type {cpu-instance-type}",
             "IGNORE_COVERAGE=- tox -e py36 -- -m deploy_test test/integration/sagemaker --py-version 3 --processor gpu --region {region} --docker-base-name '$ECR_REPO' --aws-id {aws-id} --framework-version '$FRAMEWORK_VERSION' --instance-type '$GPU_INSTANCE_TYPE'",
             "IGNORE_COVERAGE=- tox -e py36 -- -m deploy_test test/integration/sagemaker --py-version 2 --processor gpu --region {region} --docker-base-name '$ECR_REPO' --aws-id {aws-id} --framework-version '$FRAMEWORK_VERSION' --instance-type '$GPU_INSTANCE_TYPE'"
           ]
