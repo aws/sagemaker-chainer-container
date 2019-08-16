@@ -61,7 +61,7 @@
  * add sagemaker prefix to hyperparameters
  * Chainer migration
  * wait for algo-1 to be available when running with mpi
- * disable backprop in default predict function. do not get list for npy…
+ * disable backprop in default predict function. do not get list for npy in output_fn
  * add opencv, cv2 to images
  * update py3 gpu to 4.0.0
  * combine failure / process finishing tests
@@ -87,4 +87,3 @@
  * Creating initial file from template
  * Creating initial file from template
  * Initial commit
-
