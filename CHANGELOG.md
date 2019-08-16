@@ -37,7 +37,7 @@
  * Temporarily freeze sagemaker-containers version to 2.2.5 until we have a proper fix.
  * pin requests version
  * bump minimum sagemaker-containers version to 2.2.0
- * Remove installation of sagemaker containers in dockerfile and allow f…
+ * Remove installation of sagemaker containers in dockerfile
  * Migrate tests to nvidia-docker2
  * Fix broken image build instructions
  * initialize model once
