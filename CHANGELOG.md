@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.2 (2019-08-21)
+
+### Bug fixes and other changes
+
+ * remove duplicate CHANGELOG lines
+
 ## v1.0.1 (2019-08-19)
 
 ### Bug fixes and other changes
