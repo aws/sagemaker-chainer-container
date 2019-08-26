@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.3 (2019-08-26)
+
+### Bug fixes and other changes
+
+ * split sagemaker test to training and deploy
+
 ## v1.0.2 (2019-08-21)
 
 ### Bug fixes and other changes
