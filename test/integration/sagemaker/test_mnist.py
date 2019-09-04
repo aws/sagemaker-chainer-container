@@ -81,6 +81,7 @@ def _test_mnist_deploy(sagemaker_session, instance_type):
             model_data=model_data,
             role='SageMakerRole',
             entry_point=script_path,
+            sagemaker_session=sagemaker_session,
         )
         predictor = chainer.deploy(initial_instance_count=1, instance_type=instance_type)
 
