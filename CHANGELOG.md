@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.0.4 (2019-09-05)
+
+### Bug fixes and other changes
+
+ * enable IGNORE_COVERAGE when invoking coverage with tox
+ * use sagemaker_session in deploy test
+
 ## v1.0.3 (2019-08-26)
 
 ### Bug fixes and other changes
