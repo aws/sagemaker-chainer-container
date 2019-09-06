@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.5 (2019-09-06)
+
+### Bug fixes and other changes
+
+ * parametrize Python version in integ tests
+
 ## v1.0.4 (2019-09-05)
 
 ### Bug fixes and other changes
