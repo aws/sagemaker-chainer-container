@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.6 (2019-10-22)
+
+### Bug fixes and other changes
+
+ * update instance type region availability
+
 ## v1.0.5 (2019-09-06)
 
 ### Bug fixes and other changes
