@@ -1,5 +1,53 @@
 # Changelog
 
+## v1.0.6 (2019-10-22)
+
+### Bug fixes and other changes
+
+ * update instance type region availability
+
+## v1.0.5 (2019-09-06)
+
+### Bug fixes and other changes
+
+ * parametrize Python version in integ tests
+
+## v1.0.4 (2019-09-05)
+
+### Bug fixes and other changes
+
+ * enable IGNORE_COVERAGE when invoking coverage with tox
+ * use sagemaker_session in deploy test
+
+## v1.0.3 (2019-08-26)
+
+### Bug fixes and other changes
+
+ * split sagemaker test to training and deploy
+
+## v1.0.2 (2019-08-21)
+
+### Bug fixes and other changes
+
+ * remove duplicate CHANGELOG lines
+
+## v1.0.1 (2019-08-19)
+
+### Bug fixes and other changes
+
+ * update minimum git tag to 1.0.1 in buildspec-release.yml
+ * remove non-ascii character from CHANGELOG
+ * remove non-ascii character from CHANGELOG
+ * correct placeholder name cpu-instance-type in buildspec-release.yml
+ * Add placeholder in test commands for cpu-instance-type and aws-id.
+ * pin sagemaker and sagemaker-container versions
+ * pass env variables to tox
+ * pin requests version and mark deploy tests
+
+### Documentation changes
+
+ * remove duplicate entry from CHANGELOG
+
 ## v1.0.0 (2019-06-25)
 
 ### Bug fixes and other changes
@@ -37,7 +85,7 @@
  * Temporarily freeze sagemaker-containers version to 2.2.5 until we have a proper fix.
  * pin requests version
  * bump minimum sagemaker-containers version to 2.2.0
- * Remove installation of sagemaker containers in dockerfile and allow f…
+ * Remove installation of sagemaker containers in dockerfile
  * Migrate tests to nvidia-docker2
  * Fix broken image build instructions
  * initialize model once
@@ -61,7 +109,7 @@
  * add sagemaker prefix to hyperparameters
  * Chainer migration
  * wait for algo-1 to be available when running with mpi
- * disable backprop in default predict function. do not get list for npy…
+ * disable backprop in default predict function. do not get list for npy in output_fn
  * add opencv, cv2 to images
  * update py3 gpu to 4.0.0
  * combine failure / process finishing tests
@@ -87,4 +135,3 @@
  * Creating initial file from template
  * Creating initial file from template
  * Initial commit
-

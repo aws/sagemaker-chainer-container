@@ -34,10 +34,10 @@ logging.getLogger('connectionpool.py').setLevel(logging.INFO)
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
-NO_P2_REGIONS = ['ap-northeast-3', 'ap-southeast-2', 'ca-central-1', 'eu-central-1',
-                 'eu-west-2', 'us-west-1']
-NO_P3_REGIONS = ['ap-northeast-3', 'ap-southeast-1', 'ap-southeast-2', 'ap-south-1', 'ca-central-1',
-                 'eu-central-1', 'eu-west-2', 'us-west-1']
+NO_P2_REGIONS = ['ap-east-1', 'ap-northeast-3', 'ap-southeast-2', 'ca-central-1', 'eu-central-1',
+                 'eu-north-1', 'eu-west-2', 'eu-west-3', 'sa-east-1', 'us-west-1', 'me-south-1']
+NO_P3_REGIONS = ['ap-east-1', 'ap-northeast-3', 'ap-southeast-1', 'ap-southeast-2', 'ap-south-1', 'ca-central-1',
+                 'eu-central-1', 'eu-north-1', 'eu-west-2', 'eu-west-3', 'sa-east-1', 'us-west-1', 'me-south-1']
 
 
 def pytest_addoption(parser):
@@ -48,10 +48,16 @@ def pytest_addoption(parser):
     parser.addoption('--docker-base-name', default='chainer')
     parser.addoption('--region', default='us-west-2')
     parser.addoption('--framework-version', default=Chainer.LATEST_VERSION)
-    parser.addoption('--py-version', choices=['2', '3'], default='3')
+    parser.addoption('--py-version', choices=['2', '3', '2,3'], default='3')
     parser.addoption('--processor', choices=['gpu', 'cpu'], default='cpu')
     # If not specified, will default to {framework-version}-{processor}-py{py-version}
     parser.addoption('--tag', default=None)
+
+
+def pytest_generate_tests(metafunc):
+    if 'py_version' in metafunc.fixturenames:
+        py_version_params = ['py' + v for v in metafunc.config.getoption('--py-version').split(',')]
+        metafunc.parametrize('py_version', py_version_params, scope='session')
 
 
 # pylint: disable=unused-argument
@@ -68,11 +74,6 @@ def fixture_region(request):
 @pytest.fixture(scope='session', name='framework_version')
 def fixture_framework_version(request):
     return request.config.getoption('--framework-version')
-
-
-@pytest.fixture(scope='session', name='py_version')
-def fixture_py_version(request):
-    return 'py{}'.format(int(request.config.getoption('--py-version')))
 
 
 @pytest.fixture(scope='session', name='processor')
