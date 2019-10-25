@@ -3,7 +3,7 @@ version: 0.2
 env:
   variables:
     FRAMEWORK_VERSION: '5.0.0'
-    CPU_INSTANCE_TYPE: 'ml.c4.xlarge'
+    CPU_INSTANCE_TYPE: 'ml.c5.xlarge'
     GPU_INSTANCE_TYPE: 'ml.p2.xlarge'
     LOCAL_BASE_REPO: 'chainer-base'
     ECR_REPO: 'sagemaker-chainer'
