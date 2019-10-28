@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.0.7 (2019-10-28)
+
+### Bug fixes and other changes
+
+ * change test instance type
+ * use regional endpoint for STS in builds
+
 ## v1.0.6 (2019-10-22)
 
 ### Bug fixes and other changes
