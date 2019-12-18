@@ -50,7 +50,7 @@ setup(
     extras_require={
         'test': [
             'tox', 'flake8', 'coverage', 'flake8-import-order', 'pytest==4.5.0', 'pytest-cov',
-            'pytest-xdist', 'mock', 'Flask', 'boto3>=1.4.8', 'docker-compose',
+            'pytest-xdist', 'mock', 'Flask', 'boto3>=1.4.8', 'docker-compose==1.23.2',
             'nvidia-docker-compose', 'sagemaker==1.29.0', 'PyYAML==3.10', 'pluggy==0.11'
         ]
     })
