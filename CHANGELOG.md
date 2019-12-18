@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.8 (2019-12-18)
+
+### Bug fixes and other changes
+
+ * Pin docker-compose version to resolve version conflicts.
+
 ## v1.0.7 (2019-10-28)
 
 ### Bug fixes and other changes
