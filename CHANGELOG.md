@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.9 (2020-01-08)
+
+### Bug fixes and other changes
+
+ * update copyright year in license header
+
 ## v1.0.8 (2019-12-18)
 
 ### Bug fixes and other changes
