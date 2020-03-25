@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.9.post0 (2020-03-25)
+
+### Testing and Release Infrastructure
+
+ * fix quotes in buildspec-release.yml
+ * properly fail build if has-matching-changes fails
+ * properly fail build if has-matching-changes fails
+
 ## v1.0.9 (2020-01-08)
 
 ### Bug fixes and other changes
