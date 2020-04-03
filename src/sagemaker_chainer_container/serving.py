@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import logging
+import requests
 
 import chainer
 import numpy as np
@@ -27,6 +28,17 @@ logging.getLogger('botocore').setLevel(logging.WARN)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
+
+def default_healthcheck_fn():
+    """A default healthcheck_fn for Chainer. Sends GET request to model server.
+
+    Returns:
+        (flask.Response): status code returned by server.
+    """
+    ping_url = "http://0.0.0.0:{}/ping".format(env.http_port)
+    res = requests.get(ping_url)
+    return requests.Response(res.status_code)
 
 
 def default_input_fn(input_data, content_type):
@@ -117,6 +129,7 @@ def main(environ, start_response):
         user_module_transformer = _user_module_transformer(user_module)
         user_module_transformer.initialize()
         app = worker.Worker(transform_fn=user_module_transformer.transform,
-                            module_name=serving_env.module_name)
+                            module_name=serving_env.module_name,
+                            healthcheck_fn=default_healthcheck_fn)
 
     return app(environ, start_response)
